@@ -26,7 +26,7 @@ proc treqmon::worker::init { config } {
 }
 
 proc treqmon::worker::register_event { ctx req req } {
-
+puts here=[dict get $req treqmon timestamp]
     dict set event [list \
         timestamp_ms_start [dict get $req treqmon timestamp] \
         timestamp_ms_end   $timestamp \

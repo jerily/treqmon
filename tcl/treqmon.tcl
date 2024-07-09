@@ -63,8 +63,8 @@ proc ::treqmon::leave { ctx req res } {
     }
 
     dict set req treqmon timestamp_end [clock milliseconds]
-    tpool::post -detached -nowait $poolId \
-        [list treqmon::register_event $ctx $req $res]
+    ::tpool::post -detached -nowait $poolId \
+        [list ::treqmon::worker::register_event $ctx $req $res]
 
     return $res
 
