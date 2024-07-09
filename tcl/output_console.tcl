@@ -2,12 +2,13 @@
 # SPDX-FileCopyrightText: 2024 Neofytos Dimitriou (neo@jerily.cy)
 # SPDX-License-Identifier: MIT.
 
-namespace eval ::treqmon::console {
-}
+# This is just an alias for ::treqmon::worker::file
 
-proc ::treqmon::console::init { config } {
-}
+package require Thread
 
-proc ::treqmon::console::output_event { ev } {
-    puts "Event: $ev"
+namespace eval ::treqmon::worker::console {}
+
+proc ::treqmon::worker::console::process_events { output_id config events } {
+    dict set config -path stdout
+    ::treqmon::worker::file::process_events $output_id $config $events
 }

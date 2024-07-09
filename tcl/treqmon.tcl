@@ -6,68 +6,77 @@ package require Thread
 
 namespace eval ::treqmon {
 
-    variable main_config {
+    variable default_config {
         tpool {
             -minworkers 1
             -maxworkers 4
             -idletime 30
         }
         worker {
-            output {
+            -output {
                 console {
-                    ns ::treqmon::console
                 }
             }
+            -history_max_events 1000
         }
     }
 
-    variable middleware_config {
-        poolId ""
-    }
 }
 
-proc ::treqmon::init_main { config } {
+proc ::treqmon::init { {config {}} } {
 
-    variable main_config
+    variable default_config
 
-    set tpool_config [dict get $main_config tpool]
+    # Validate specified configuration
+    foreach key [dict keys $config] {
+        if { $key ni { tpool worker } } {
+            return -code error "unknown key in configuration dictionary \"$key\""
+        }
+    }
+
+    set tpool_config [dict get $default_config tpool]
     if { [dict exists $config tpool] } {
         set tpool_config [dict merge $tpool_config [dict get $config tpool]]
     }
 
-    set worker_config [dict get $main_config worker]
-
-    set initcmd "lappend auto_path .\npackage require treqmon\n::treqmon::worker::init [list $worker_config]"
-    puts initcmd=$initcmd
-
-    dict set tpool_config -initcmd $initcmd
-    return [dict create poolId [tpool::create {*}$tpool_config]]
-}
-
-proc ::treqmon::init_middleware { config } {
-    variable middleware_config
-
-    if { [dict exists $config poolId] } {
-        dict set middleware_config poolId [dict get $config poolId]
+    set worker_config [dict get $default_config worker]
+    if { [dict exists $config worker] } {
+        set worker_config [dict merge $worker_config [dict get $config worker]]
     }
+
+    ::treqmon::worker::validate_config $worker_config
+
+    tsv::set ::treqmon workerConfig $worker_config
+
+    dict set tpool_config -initcmd [list package require treqmon]
+
+    tsv::set ::treqmon workerPoolId [tpool::create {*}$tpool_config]
+
 }
 
 proc ::treqmon::enter { ctx req } {
-    dict set req treqmon timestamp_start [clock milliseconds]
+    dict set req treqmon timestamp_start [clock microseconds]
+    return $req
 }
 
 proc ::treqmon::leave { ctx req res } {
-    variable middleware_config
-
-    set poolId [dict get $middleware_config poolId]
-    if { $poolId eq {} } {
-        error "Middleware not initialized."
+    dict set res treqmon timestamp_end [clock microseconds]
+    if { [tsv::get ::treqmon workerPoolId poolId] } {
+        ::tpool::post -detached -nowait $poolId \
+            [list ::treqmon::worker::register_event $ctx [filter_body $req] [filter_body $res]]
     }
-
-    dict set res treqmon timestamp_end [clock milliseconds]
-    ::tpool::post -detached -nowait $poolId \
-        [list ::treqmon::worker::register_event $ctx $req $res]
-
     return $res
+}
 
+# This function filters the "body" field in the dictionary and replaces it
+# with "body_size", corresponding to the size of the deleted body field.
+# The "body" field can be very large in size. With this procedure,
+# we won't be transferring large amounts of memory between threads.
+proc ::treqmon::filter_body { d } {
+    if { ![dict exists $d body] } {
+        return $d
+    }
+    dict set d body_size [string length [dict get $d body]]
+    dict unset d body
+    return $d
 }

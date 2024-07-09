@@ -2,5 +2,4 @@
 # SPDX-FileCopyrightText: 2024 Neofytos Dimitriou (neo@jerily.cy)
 # SPDX-License-Identifier: MIT.
 
-set dir [file dirname [info script]]
 package ifneeded treqmon 1.0.0 [list source [file join $dir tcl init.tcl]]
