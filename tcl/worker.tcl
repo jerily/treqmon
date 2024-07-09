@@ -14,7 +14,7 @@ namespace eval ::treqmon::worker {
     }
 }
 
-proc treqmon::worker::init { config } {
+proc ::treqmon::worker::init { config } {
 
     variable default_config
 
@@ -24,10 +24,11 @@ proc treqmon::worker::init { config } {
     }
 
     dict set default_config output $output_config
-    puts default_config=$default_config
+    #puts default_config=$default_config
+    return $default_config
 }
 
-proc treqmon::worker::register_event { ctx req req } {
+proc ::treqmon::worker::register_event { ctx req req } {
 
     dict set event [list \
         timestamp_ms_start [dict get $req treqmon timestamp] \
@@ -35,11 +36,13 @@ proc treqmon::worker::register_event { ctx req req } {
         duration_ms        [expr { $timestamp - [dict get $req treqmon timestamp] }] \
     ]
 
-#    dict for {output_name output_config} $output_config {
-#        dict with output_config {
-#            $ns::output_event $event
-#        }
-#    }
+    dict for {output_name output_config} $output_config {
+        puts output_name=$output_name
+        dict with output_config {
+        puts ns=$ns
+            $ns::output_event $event
+        }
+    }
 
 }
 

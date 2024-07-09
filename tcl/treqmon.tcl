@@ -37,9 +37,11 @@ proc ::treqmon::init_main { config } {
 
     set worker_config [dict get $main_config worker]
 
-    dict set tpool_conf -initcmd [list package require treqmon::worker ; ::treqmon::worker::init $worker_config]
+    set initcmd "lappend auto_path .\npackage require treqmon\n::treqmon::worker::init [list $worker_config]"
+    puts initcmd=$initcmd
 
-    return [dict create poolId [tpool::create {*}$tpool_conf]]
+    dict set tpool_config -initcmd $initcmd
+    return [dict create poolId [tpool::create {*}$tpool_config]]
 }
 
 proc ::treqmon::init_middleware { config } {
@@ -66,6 +68,7 @@ proc ::treqmon::leave { ctx req res } {
     ::tpool::post -detached -nowait $poolId \
         [list ::treqmon::worker::register_event $ctx $req $res]
 
+    ::tpool::wait $poolId $jobId
     return $res
 
 }
