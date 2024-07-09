@@ -16,7 +16,9 @@ set init_script {
     package require twebserver
     package require treqmon
 
-    ::treqmon::init_middleware {}
+    set treqmon_pool_config [dict get [::twebserver::get_config_dict] treqmon]
+    puts "treqmon_pool_config=$treqmon_pool_config"
+    ::treqmon::init_middleware $treqmon_pool_config
 
     ::twebserver::create_router router
 
@@ -45,3 +47,8 @@ set config_dict [dict create \
 
 set server_handle [::twebserver::create_server -with_router $config_dict process_conn $init_script]
 ::twebserver::listen_server -http -num_threads 4 $server_handle 8080
+
+puts "Server is running, go to http://localhost:8080/"
+
+::twebserver::wait_signal
+::twebserver::destroy_server $server_handle
