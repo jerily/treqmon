@@ -28,19 +28,29 @@ proc ::treqmon::worker::init { config } {
     return $default_config
 }
 
-proc ::treqmon::worker::register_event { ctx req req } {
+proc ::treqmon::worker::register_event { ctx req res } {
+    variable default_config
 
-    dict set event [list \
-        timestamp_ms_start [dict get $req treqmon timestamp] \
-        timestamp_ms_end   $timestamp \
-        duration_ms        [expr { $timestamp - [dict get $req treqmon timestamp] }] \
+    set timestamp_start [dict get $req treqmon timestamp_start]
+    set timestamp_end [dict get $res treqmon timestamp_end]
+    set duration_ms [expr { $timestamp_end - $timestamp_start }]
+
+    #puts timestamp_start=$timestamp_start
+    #puts timestamp_end=$timestamp_end
+    #puts duration_ms=$duration_ms
+
+    set event [dict create \
+        timestamp_ms_start $timestamp_start \
+        timestamp_ms_end   $timestamp_end \
+        duration_ms        $duration_ms \
     ]
 
-    dict for {output_name output_config} $output_config {
+    #puts event=$event
+    dict for {output_name output_config} [dict get $default_config output] {
         puts output_name=$output_name
         dict with output_config {
-        puts ns=$ns
-            $ns::output_event $event
+            #puts ns=$ns
+            ${ns}::output_event $event
         }
     }
 

@@ -15,7 +15,7 @@ namespace eval ::treqmon {
         worker {
             output {
                 console {
-                    ns ::treqmon::output::console
+                    ns ::treqmon::console
                 }
             }
         }
@@ -64,7 +64,7 @@ proc ::treqmon::leave { ctx req res } {
         error "Middleware not initialized."
     }
 
-    dict set req treqmon timestamp_end [clock milliseconds]
+    dict set res treqmon timestamp_end [clock milliseconds]
     ::tpool::post -detached -nowait $poolId \
         [list ::treqmon::worker::register_event $ctx $req $res]
 
