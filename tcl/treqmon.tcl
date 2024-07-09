@@ -68,7 +68,6 @@ proc ::treqmon::leave { ctx req res } {
     ::tpool::post -detached -nowait $poolId \
         [list ::treqmon::worker::register_event $ctx $req $res]
 
-    ::tpool::wait $poolId $jobId
     return $res
 
 }
