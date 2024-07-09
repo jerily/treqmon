@@ -47,7 +47,7 @@ proc ::treqmon::worker::register_event { ctx req res } {
 
     #puts event=$event
     dict for {output_name output_config} [dict get $default_config output] {
-        puts output_name=$output_name
+        #puts output_name=$output_name
         dict with output_config {
             #puts ns=$ns
             ${ns}::output_event $event
