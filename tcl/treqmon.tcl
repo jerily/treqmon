@@ -17,7 +17,7 @@ namespace eval ::treqmon {
                 console {
                 }
             }
-            -history_max_events 1000
+            -history_max_events 1000000
         }
     }
 
@@ -81,3 +81,108 @@ proc ::treqmon::filter_body { d } {
     dict unset d body
     return $d
 }
+
+proc ::treqmon::statistics { args } {
+
+    # Time window in seconds for which we want to get statistics.
+    # It is necessary not to look through all statistics, but only a specified
+    # interval (for example, last second or last minute).
+    set time_window 0
+
+    # A list of metrics to be returned, and in the order in which they
+    # appear in the arguments.
+    set metric_list [list]
+
+    # Known time intervals
+    array set intervals {
+        second 0
+        minute 59
+        hour   3599
+        day    86399
+    }
+
+    unset -nocomplain timestamp_current
+
+    # Check if the last argument is a relative time
+    set timestamp_current [lindex $args end]
+    if { $timestamp_current eq "now" || [string is integer -strict $timestamp_current] } {
+        # Remove the last argument from the argument list
+        set args [lreplace $args end end]
+    } else {
+        set timestamp_current "now"
+    }
+
+    if { $timestamp_current eq "now" } {
+        set timestamp_current [clock seconds]
+    }
+
+    foreach arg $args {
+        lassign [split [string trimleft $arg -] _] metric interval
+        if { $metric ni {count average} || $interval ni {second minute hour day} } {
+            return -code error "unknown metric type \"$arg\""
+        }
+        dict set metric_count $interval $metric 0
+
+        lappend metric_list [list $metric $interval]
+
+        set interval $intervals($interval)
+        if { $interval > $time_window } {
+            set time_window $interval
+        }
+    }
+
+    # Getting the request statistics into a variable so as not to block
+    # other threads from adding new records.
+    if { ![tsv::get ::treqmon::worker::history events events] } {
+        # Failed to retrieve events. Let's use an empty list.
+        set events [list]
+    }
+
+    set events [lreverse $events]
+    set count 0
+    foreach ev $events {
+
+        lassign $ev timestamp duration
+
+        if { $timestamp > $timestamp_current } {
+            continue
+        }
+
+        # The age of the current record in seconds.
+        set age [expr { $timestamp_current - $timestamp }]
+        # First, check to make sure we haven't reached a timestamp outside
+        # of our time window.
+        if { $age > $time_window } {
+            break
+        }
+
+        foreach interval [array names intervals] {
+            # Do we have metrics that need to be calculated within the interval?
+            if { $age <= $intervals($interval) && [dict exists $metric_count $interval] } {
+                if { [dict exists $metric_count $interval count] } {
+                    dict set metric_count $interval count [expr \
+                        { [dict get $metric_count $interval count] + 1 }]
+                }
+                if { [dict exists $metric_count $interval average] } {
+                    dict set metric_count $interval average [expr \
+                        { 1.0 * ((1.0 * [dict get $metric_count $interval average] * $count) + $duration) / ($count + 1) }]
+                }
+            }
+        }
+
+        incr count
+
+    }
+
+    # Generate results
+    set result [list]
+
+    foreach metric $metric_list {
+        lassign $metric metric interval
+        lappend result [expr { round([dict get $metric_count $interval $metric]) }]
+    }
+
+    return $result
+
+}
+
