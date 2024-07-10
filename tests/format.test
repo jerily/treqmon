@@ -1,0 +1,207 @@
+# Copyright Jerily LTD. All Rights Reserved.
+# SPDX-FileCopyrightText: 2024 Neofytos Dimitriou (neo@jerily.cy)
+# SPDX-License-Identifier: MIT.
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+# Set a specific time zone to get reproducible results for time-based formats.
+set ::env(TCL_TZ) CET
+
+# A known environment variable for tests
+set ::env(VAR_NAME) "qux"
+
+package require treqmon
+
+set cases {
+    treqmonFormat-1.1 "%%" "%" {}
+        {plain %}
+
+    treqmonFormat-1.2.1 "%h" "1.1.1.1" {remote_hostname 1.1.1.1}
+        {%h - remote hostname}
+    treqmonFormat-1.3.1 "%l" "foo" {remote_logname foo}
+        {%l - remote logname}
+    treqmonFormat-1.4.1 "%u" "bar" {remote_user bar}
+        {%u - remote user}
+    treqmonFormat-1.5.1 "%r" "GET / HTTP/1.0" {request_first_line "GET / HTTP/1.0"}
+        {%r - 1st line of the request}
+    treqmonFormat-1.6.1 "%s" "200" {response_status_code 200}
+        {%s - status code}
+    treqmonFormat-1.7.1 "%b" "123" {response_size 123}
+        {%b - response body size, in CLF format (not zero)}
+    treqmonFormat-1.7.2 "%b" "-" {response_size 0}
+        {%b - response body size, in CLF format (zero)}
+
+    treqmonFormat-1.8.1 "%t" {[10/Jul/2024:06:04:27 +0200]} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (default)}
+    treqmonFormat-1.8.2 "%{begin:}t" {[10/Jul/2024:06:04:27 +0200]} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: begin:)}
+    treqmonFormat-1.8.3 "%{end:}t" {[09/Oct/2027:09:05:03 +0200]} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: end:)}
+
+    treqmonFormat-1.8.4 "%{begin:sec}t" {1720584267} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: begin:sec)}
+    treqmonFormat-1.8.5 "%{begin:msec}t" {1720584267191} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: begin:msec)}
+    treqmonFormat-1.8.6 "%{begin:usec}t" {1720584267191214} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: begin:usec)}
+    treqmonFormat-1.8.7 "%{begin:msec_frac}t" {191} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: begin:msec_frac)}
+    treqmonFormat-1.8.8 "%{begin:usec_frac}t" {214} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: begin:usec_frac)}
+    treqmonFormat-1.8.9 "%{begin:%a %b %d %H:%M:%S %Z %Y}t" {Wed Jul 10 06:04:27 CEST 2024} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: begin:%a %b %d %H:%M:%S %Z %Y)}
+
+    treqmonFormat-1.8.10 "%{sec}t" {1720584267} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: sec)}
+    treqmonFormat-1.8.11 "%{msec}t" {1720584267191} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: msec)}
+    treqmonFormat-1.8.12 "%{usec}t" {1720584267191214} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: usec)}
+    treqmonFormat-1.8.13 "%{msec_frac}t" {191} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: msec_frac)}
+    treqmonFormat-1.8.14 "%{usec_frac}t" {214} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: usec_frac)}
+    treqmonFormat-1.8.15 "%{%a %b %d %H:%M:%S %Z %Y}t" {Wed Jul 10 06:04:27 CEST 2024} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: %a %b %d %H:%M:%S %Z %Y)}
+
+    treqmonFormat-1.8.16 "%{end:sec}t" {1823065503} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: begin:sec)}
+    treqmonFormat-1.8.17 "%{end:msec}t" {1823065503123} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: begin:msec)}
+    treqmonFormat-1.8.18 "%{end:usec}t" {1823065503123456} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: begin:usec)}
+    treqmonFormat-1.8.19 "%{end:msec_frac}t" {123} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: begin:msec_frac)}
+    treqmonFormat-1.8.20 "%{end:usec_frac}t" {456} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: begin:usec_frac)}
+    treqmonFormat-1.8.21 "%{end:%a %b %d %H:%M:%S %Z %Y}t" {Sat Oct 09 09:05:03 CEST 2027} {request_timestamp 1720584267191214 response_timestamp 1823065503123456}
+        {%t - time the request was received, in the format [18/Sep/2011:19:18:28 -0400] (format: end:%a %b %d %H:%M:%S %Z %Y)}
+
+    treqmonFormat-1.7.1 "%B" "123" {response_size 123}
+        {%B - response body size (not zero)}
+    treqmonFormat-1.7.2 "%B" "0" {response_size 0}
+        {%B - response body size (zero)}
+    treqmonFormat-1.8.1 "%a" "1.1.1.1" {remote_addr 1.1.1.1}
+        {%a - remote IP address}
+    treqmonFormat-1.9.1 "%D" "1234" {request_timestamp 1720584267191214 response_timestamp 1720584267192448}
+        {%D - The time taken to serve the request, in microseconds}
+    treqmonFormat-1.10.1 "%{VAR_NAME}e" "qux" {}
+        {%{VARNAME}e - The contents of the environment variable VARNAME (existing)}
+    treqmonFormat-1.10.2 "%{VAR_NAME_X}e" "-" {}
+        {%{VARNAME}e - The contents of the environment variable VARNAME (not existing)}
+    treqmonFormat-1.11.1 "%H" "HTTP/1.0" {request_protocol "HTTP/1.0"}
+        {%H - request protocol}
+    treqmonFormat-1.12.1 "%{user-agent}i" "curl/8.5.0" {request_headers {accept */* host localhost:8080 user-agent curl/8.5.0}}
+        {%{VARNAME}i - contents of VARNAME: header line(s) in the request sent to the server (existing, letter case maches)}
+    treqmonFormat-1.12.2 "%{user-agent_foo}i" "-" {request_headers {accept */* host localhost:8080 user-agent curl/8.5.0}}
+        {%{VARNAME}i - contents of VARNAME: header line(s) in the request sent to the server (not existing)}
+    treqmonFormat-1.12.3 "%{User-Agent}i" "curl/8.5.0" {request_headers {accept */* host localhost:8080 user-agent curl/8.5.0}}
+        {%{VARNAME}i - contents of VARNAME: header line(s) in the request sent to the server (existing, letter case doesn't match)}
+    treqmonFormat-1.13.1 "%m" "PUT" {request_method PUT}
+        {%m - request method}
+    treqmonFormat-1.14.1 "%{user-agent}o" "curl/8.5.0" {response_headers {accept */* host localhost:8080 user-agent curl/8.5.0}}
+        {%{VARNAME}o - contents of VARNAME: header line(s) in the reply (existing, letter case maches)}
+    treqmonFormat-1.14.2 "%{user-agent_foo}o" "-" {response_headers {accept */* host localhost:8080 user-agent curl/8.5.0}}
+        {%{VARNAME}o - contents of VARNAME: header line(s) in the reply (not existing)}
+    treqmonFormat-1.14.3 "%{User-Agent}o" "curl/8.5.0" {response_headers {accept */* host localhost:8080 user-agent curl/8.5.0}}
+        {%{VARNAME}o - contents of VARNAME: header line(s) in the reply (existing, letter case doesn't match)}
+    treqmonFormat-1.15.1 "%P" "1234" {server_pid 1234}
+        {%P - process ID of the child that serviced the request}
+    treqmonFormat-1.15.2 "%{pid}P" "1234" {server_pid 1234}
+        {%{format}P - process ID or thread ID of the child that serviced the request. Valid formats are pid, tid, and hextid (format: pid)}
+    treqmonFormat-1.15.3 "%{tid}P" "140642614505536" {server_tid tid0x7fe9e913f040}
+        {%{format}P - process ID or thread ID of the child that serviced the request. Valid formats are pid, tid, and hextid (format: tid)}
+    treqmonFormat-1.15.4 "%{hextid}P" "7fe9e913f040" {server_tid tid0x7fe9e913f040}
+        {%{format}P - process ID or thread ID of the child that serviced the request. Valid formats are pid, tid, and hextid (format: hextid)}
+    treqmonFormat-1.15.5 "%{foo}P" "foo" {}
+        {%{format}P - process ID or thread ID of the child that serviced the request. Valid formats are pid, tid, and hextid (format: unknown)}
+    treqmonFormat-1.16.1 "%q" "?foo" {request_query foo}
+        {%q - query string (prepended with a ? if a query string exists, otherwise an empty string) (not empty)}
+    treqmonFormat-1.16.2 "%q" "" {request_query {}}
+        {%q - query string (prepended with a ? if a query string exists, otherwise an empty string) (empty)}
+    treqmonFormat-1.17.1 "%U" "/foo/bar" {request_path /foo/bar}
+        {%U - URL path requested, not including any query string}
+    treqmonFormat-1.18.1 "%T" "12" {request_timestamp 1720584267191214 response_timestamp 1720584279314670}
+        {%T - time taken to serve the request, in seconds}
+    treqmonFormat-1.18.2 "%{s}T" "12" {request_timestamp 1720584267191214 response_timestamp 1720584279314670}
+        {%{UNIT}T - time taken to serve the request, in seconds (UNIT: s)}
+    treqmonFormat-1.18.3 "%{ms}T" "12123" {request_timestamp 1720584267191214 response_timestamp 1720584279314670}
+        {%{UNIT}T - time taken to serve the request, in seconds (UNIT: ms)}
+    treqmonFormat-1.18.4 "%{us}T" "1234" {request_timestamp 1720584267191214 response_timestamp 1720584267192448}
+        {%{UNIT}T - time taken to serve the request, in seconds (UNIT: us)}
+    treqmonFormat-1.18.5 "%{bar}T" "bar" {request_timestamp 1720584267191214 response_timestamp 1720584267192448}
+        {%{UNIT}T - time taken to serve the request, in seconds (UNIT: unknown)}
+
+    treqmonFormat-2.1.1 "%200%" "%" {response_status_code 200}
+        {Test status code filtering, matched status code}
+    treqmonFormat-2.1.2 "%200%" "-" {response_status_code 400}
+        {Test status code filtering, mismatched status code}
+    treqmonFormat-2.1.3 "%!200%" "%" {response_status_code 300}
+        {Test status code filtering, !matched status code}
+    treqmonFormat-2.1.4 "%!200%" "-" {response_status_code 200}
+        {Test status code filtering, !mismatched status code}
+    treqmonFormat-2.1.5 "%200{variable}%" "%" {response_status_code 200}
+        {Test status code filtering when variable exists, matched status code}
+    treqmonFormat-2.1.6 "%200{variable}%" "-" {response_status_code 400}
+        {Test status code filtering when variable exists, mismatched status code}
+    treqmonFormat-2.2.1 "%200,300,400%" "%" {response_status_code 200}
+        {Test status code filtering, multiple codes, match 1st}
+    treqmonFormat-2.2.2 "%200,300,400%" "%" {response_status_code 400}
+        {Test status code filtering, multiple codes, match last}
+    treqmonFormat-2.2.3 "%200,300,400%" "%" {response_status_code 300}
+        {Test status code filtering, multiple codes, match in the middle}
+    treqmonFormat-2.2.4 "%200,300,400%" "-" {response_status_code 500}
+        {Test status code filtering, multiple codes, mismatch}
+    treqmonFormat-2.2.5 "%!200,300,400%" "-" {response_status_code 200}
+        {Test status code filtering, multiple codes, !match 1st}
+    treqmonFormat-2.2.6 "%!200,300,400%" "-" {response_status_code 400}
+        {Test status code filtering, multiple codes, !match last}
+    treqmonFormat-2.2.7 "%!200,300,400%" "-" {response_status_code 300}
+        {Test status code filtering, multiple codes, !match in the middle}
+    treqmonFormat-2.2.8 "%!200,300,400%" "%" {response_status_code 500}
+        {Test status code filtering, multiple codes, !mismatch}
+
+}
+
+foreach { name format expected event description } $cases {
+    test $name $description \
+        -body [list ::treqmon::utils::format_event ":${format}:" $event] \
+        -result ":$expected:"
+}
+
+test treqmonFormat-3.1 {Test string escaping for %r} -body {
+    set ev [dict create \
+        "request_first_line" \
+        "/\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20\x21\x22\x23\x24\x25\x26\x27\x28\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30\x31\x32\x33\x34\x35\x36\x37\x38\x39\x3a\x3b\x3c\x3d\x3e\x3f\x40\x41\x42\x43\x44\x45\x46\x47\x48\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50\x51\x52\x53\x54\x55\x56\x57\x58\x59\x5a\x5b\x5c\x5d\x5e\x5f\x60\x61\x62\x63\x64\x65\x66\x67\x68\x69\x6a\x6b\x6c\x6d\x6e\x6f\x70\x71\x72\x73\x74\x75\x76\x77\x78\x79\x7a\x7b\x7c\x7d\x7e\x7f\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8\xa9\xaa\xab\xac\xad\xae\xaf\xb0\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xea\xeb\xec\xed\xee\xef\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff" \
+    ]
+    ::treqmon::utils::format_event ":%r:" $ev
+} -cleanup {
+    unset -nocomplain ev
+} -result {:/\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8A\x8B\x8C\x8D\x8E\x8F\x90\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9A\x9B\x9C\x9D\x9E\x9F\xA0\xA1\xA2\xA3\xA4\xA5\xA6\xA7\xA8\xA9\xAA\xAB\xAC\xAD\xAE\xAF\xB0\xB1\xB2\xB3\xB4\xB5\xB6\xB7\xB8\xB9\xBA\xBB\xBC\xBD\xBE\xBF\xC0\xC1\xC2\xC3\xC4\xC5\xC6\xC7\xC8\xC9\xCA\xCB\xCC\xCD\xCE\xCF\xD0\xD1\xD2\xD3\xD4\xD5\xD6\xD7\xD8\xD9\xDA\xDB\xDC\xDD\xDE\xDF\xE0\xE1\xE2\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEA\xEB\xEC\xED\xEE\xEF\xF0\xF1\xF2\xF3\xF4\xF5\xF6\xF7\xF8\xF9\xFA\xFB\xFC\xFD\xFE\xFF:}
+
+test treqmonFormat-3.2 {Test string escaping for %i} -body {
+    set ev [dict create \
+        request_headers [dict create \
+            accept \
+            "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20\x21\x22\x23\x24\x25\x26\x27\x28\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30\x31\x32\x33\x34\x35\x36\x37\x38\x39\x3a\x3b\x3c\x3d\x3e\x3f\x40\x41\x42\x43\x44\x45\x46\x47\x48\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50\x51\x52\x53\x54\x55\x56\x57\x58\x59\x5a\x5b\x5c\x5d\x5e\x5f\x60\x61\x62\x63\x64\x65\x66\x67\x68\x69\x6a\x6b\x6c\x6d\x6e\x6f\x70\x71\x72\x73\x74\x75\x76\x77\x78\x79\x7a\x7b\x7c\x7d\x7e\x7f\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8\xa9\xaa\xab\xac\xad\xae\xaf\xb0\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xea\xeb\xec\xed\xee\xef\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff" \
+        ] \
+    ]
+    ::treqmon::utils::format_event ":%{Accept}i:" $ev
+} -cleanup {
+    unset -nocomplain ev
+} -result {:\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8A\x8B\x8C\x8D\x8E\x8F\x90\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9A\x9B\x9C\x9D\x9E\x9F\xA0\xA1\xA2\xA3\xA4\xA5\xA6\xA7\xA8\xA9\xAA\xAB\xAC\xAD\xAE\xAF\xB0\xB1\xB2\xB3\xB4\xB5\xB6\xB7\xB8\xB9\xBA\xBB\xBC\xBD\xBE\xBF\xC0\xC1\xC2\xC3\xC4\xC5\xC6\xC7\xC8\xC9\xCA\xCB\xCC\xCD\xCE\xCF\xD0\xD1\xD2\xD3\xD4\xD5\xD6\xD7\xD8\xD9\xDA\xDB\xDC\xDD\xDE\xDF\xE0\xE1\xE2\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEA\xEB\xEC\xED\xEE\xEF\xF0\xF1\xF2\xF3\xF4\xF5\xF6\xF7\xF8\xF9\xFA\xFB\xFC\xFD\xFE\xFF:}
+
+test treqmonFormat-3.2 {Test string escaping for %o} -body {
+    set ev [dict create \
+        response_headers [dict create \
+            accept \
+            "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20\x21\x22\x23\x24\x25\x26\x27\x28\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30\x31\x32\x33\x34\x35\x36\x37\x38\x39\x3a\x3b\x3c\x3d\x3e\x3f\x40\x41\x42\x43\x44\x45\x46\x47\x48\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50\x51\x52\x53\x54\x55\x56\x57\x58\x59\x5a\x5b\x5c\x5d\x5e\x5f\x60\x61\x62\x63\x64\x65\x66\x67\x68\x69\x6a\x6b\x6c\x6d\x6e\x6f\x70\x71\x72\x73\x74\x75\x76\x77\x78\x79\x7a\x7b\x7c\x7d\x7e\x7f\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8\xa9\xaa\xab\xac\xad\xae\xaf\xb0\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xea\xeb\xec\xed\xee\xef\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff" \
+        ] \
+    ]
+    ::treqmon::utils::format_event ":%{Accept}o:" $ev
+} -cleanup {
+    unset -nocomplain ev
+} -result {:\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0B\x0C\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7F\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8A\x8B\x8C\x8D\x8E\x8F\x90\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9A\x9B\x9C\x9D\x9E\x9F\xA0\xA1\xA2\xA3\xA4\xA5\xA6\xA7\xA8\xA9\xAA\xAB\xAC\xAD\xAE\xAF\xB0\xB1\xB2\xB3\xB4\xB5\xB6\xB7\xB8\xB9\xBA\xBB\xBC\xBD\xBE\xBF\xC0\xC1\xC2\xC3\xC4\xC5\xC6\xC7\xC8\xC9\xCA\xCB\xCC\xCD\xCE\xCF\xD0\xD1\xD2\xD3\xD4\xD5\xD6\xD7\xD8\xD9\xDA\xDB\xDC\xDD\xDE\xDF\xE0\xE1\xE2\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEA\xEB\xEC\xED\xEE\xEF\xF0\xF1\xF2\xF3\xF4\xF5\xF6\xF7\xF8\xF9\xFA\xFB\xFC\xFD\xFE\xFF:}

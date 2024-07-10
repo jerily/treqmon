@@ -4,40 +4,173 @@
 
 namespace eval ::treqmon::utils {
 
-    namespace export format_event format_get
+    namespace export format_event format_get format_escape
 
 }
 
-proc ::treqmon::utils::format_get { type modifier varname ev } {
-    switch -exact -- $type {
-        "h" {
-            return [dict get $ev remote_ip]
-        }
-        "l" {
-            return [dict get $ev remote_logname]
-        }
-        "u" {
-            return [dict get $ev remote_user]
-        }
-        "t" {
-            set timestamp [expr { [dict get $ev timestamp_start] / 1000000 }]
-            return [clock format $timestamp -format {[%d/%b/%Y:%H:%M:%S %z]} -locale en]
-        }
-        "r" {
-            return [dict get $ev request]
-        }
-        "s" {
-            return [dict get $ev status_code]
-        }
-        "b" {
-            return [expr { [dict get $ev response_size] ? [dict get $ev response_size] : "-" }]
+proc ::treqmon::utils::format_escape { str } {
+    set output ""
+    foreach ch [split $str ""] {
+        switch -exact -- $ch {
+            "\"" - "\\" {
+                append output "\\" $ch
+            }
+            "\n" { append output {\n} }
+            "\r" { append output {\r} }
+            "\t" { append output {\t} }
+            default {
+                scan $ch %c c
+                if { $c >= 0x20 && $c <= 0x7e } {
+                    append output $ch
+                } else {
+                    append output [format "\\x%02X" $c]
+                }
+            }
         }
     }
+    return $output
+}
+
+proc ::treqmon::utils::format_get { type modifier varname ev } {
+    set r ""
+    switch -exact -- $type {
+        "%" {
+            set r "%"
+        }
+        "h" {
+            set r [dict get $ev remote_hostname]
+        }
+        "a" {
+            set r [dict get $ev remote_addr]
+        }
+        "l" {
+            set r [dict get $ev remote_logname]
+        }
+        "u" {
+            set r [dict get $ev remote_user]
+        }
+        "r" {
+            set r [dict get $ev request_first_line]
+            set r [format_escape $r]
+        }
+        "H" {
+            set r [dict get $ev request_protocol]
+        }
+        "s" {
+            set r [dict get $ev response_status_code]
+        }
+        "b" {
+            set r [expr { [dict get $ev response_size] ? [dict get $ev response_size] : "-" }]
+        }
+        "B" {
+            set r [dict get $ev response_size]
+        }
+        "D" {
+            set r [expr { [dict get $ev response_timestamp] - [dict get $ev request_timestamp] }]
+        }
+        "T" {
+            if { $varname eq "" || $varname eq "s" } {
+                set r [expr { ([dict get $ev response_timestamp] - [dict get $ev request_timestamp]) / 1000000 }]
+            } elseif { $varname eq "ms" } {
+                set r [expr { ([dict get $ev response_timestamp] - [dict get $ev request_timestamp]) / 1000 }]
+            } elseif { $varname eq "us" } {
+                set r [expr { [dict get $ev response_timestamp] - [dict get $ev request_timestamp] }]
+            } else {
+                return $varname
+            }
+        }
+        "t" {
+
+            if { [string range $varname 0 5] eq "begin:" } {
+                set timestamp [dict get $ev request_timestamp]
+                set varname [string range $varname 6 end]
+            } elseif { [string range $varname 0 3] eq "end:" } {
+                set timestamp [dict get $ev response_timestamp]
+                set varname [string range $varname 4 end]
+            } else {
+                set timestamp [dict get $ev request_timestamp]
+            }
+
+            if { $varname eq "sec" } {
+                set r [expr { $timestamp / 1000000 }]
+            } elseif { $varname eq "msec" } {
+                set r [expr { $timestamp / 1000 }]
+            } elseif { $varname eq "usec" } {
+                set r $timestamp
+            } elseif { $varname eq "msec_frac" } {
+                set r [expr { ($timestamp / 1000) % 1000 }]
+            } elseif { $varname eq "usec_frac" } {
+                set r [expr { $timestamp % 1000 }]
+            } else {
+                if { $varname eq "" } {
+                    set varname {[%d/%b/%Y:%H:%M:%S %z]}
+                }
+                set timestamp [expr { $timestamp / 1000000 }]
+                set r [clock format $timestamp -format $varname]
+            }
+
+        }
+        "e" {
+            if { [info exists ::env($varname)] } {
+                set r $::env($varname)
+            }
+        }
+        "i" {
+            set varname [string tolower $varname]
+            if { [dict exists $ev request_headers $varname] } {
+                set r [dict get $ev request_headers $varname]
+            }
+            set r [format_escape $r]
+        }
+        "o" {
+            set varname [string tolower $varname]
+            set header_keys [dict keys [dict get $ev response_headers]]
+            if { [set pos [lsearch -exact -nocase $header_keys $varname]] != -1 } {
+                set r [dict get $ev response_headers [lindex $header_keys $pos]]
+            }
+            set r [format_escape $r]
+        }
+        "m" {
+            set r [dict get $ev request_method]
+        }
+        "p" {
+            set r [dict get $ev server_port]
+        }
+        "P" {
+            if { $varname eq "" || $varname eq "pid" } {
+                set r [dict get $ev server_pid]
+            } elseif { $varname eq "tid" } {
+                # Event contains thread id in format: tid0x7fe9e913f040.
+                # Convert it to a decimal number.
+                set r [expr { 0 + [string range [dict get $ev server_tid] 3 end] }]
+            } elseif { $varname eq "hextid" } {
+                # Event contains thread id in format: tid0x7fe9e913f040.
+                # Expected output: only hex digits.
+                set r [string range [dict get $ev server_tid] 5 end]
+            } else {
+                set r $varname
+            }
+        }
+        "q" {
+            set r [dict get $ev request_query]
+            if { ![string length $r] } {
+                # According to specs, we should return an empty string if query
+                # string is empty. Thus, return now to not replace an empty
+                # string to "-" at the end of this procedure.
+                return ""
+            }
+            set r "?$r"
+        }
+        "U" {
+            set r [dict get $ev request_path]
+        }
+    }
+    return [expr { [string length $r] ? $r : "-" }]
 }
 
 proc ::treqmon::utils::format_event { frm ev } {
 
-    set cache [dict create "%" "%"]
+    set cache [dict create]
     set output ""
 
     # state:
@@ -96,11 +229,20 @@ proc ::treqmon::utils::format_event { frm ev } {
             }
             continue
         }
+        # Maybe we want to start defining a variable?
+        if { $c eq "\{" } {
+            set state 2
+            continue
+        }
         # If we are here, then we have encountered the placeholder type.
         # Let's check if we need to filter this placeholder by status code.
+        if { [string length $status_filter_code_curr] } {
+            lappend status_filter_code_list $status_filter_code_curr
+            set status_filter_code_curr ""
+        }
         if { [llength $status_filter_code_list] } {
             # Skip if current status code is not in specified list.
-            set skip [expr { [dict get $ev status_code] ni $status_filter_code_list }]
+            set skip [expr { [dict get $ev response_status_code] ni $status_filter_code_list }]
             # But wait... may be we want to invert the above condition?
             if { $status_filter_code_not } {
                 set skip [expr { !$skip }]

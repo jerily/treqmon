@@ -55,12 +55,13 @@ proc ::treqmon::init { {config {}} } {
 }
 
 proc ::treqmon::enter { ctx req } {
-    dict set req treqmon timestamp_start [clock microseconds]
+    dict set req treqmon timestamp [clock microseconds]
     return $req
 }
 
 proc ::treqmon::leave { ctx req res } {
-    dict set res treqmon timestamp_end [clock microseconds]
+    dict set res treqmon timestamp [clock microseconds]
+    dict set ctx treqmon thread_id [thread::id]
     if { [tsv::get ::treqmon workerPoolId poolId] } {
         ::tpool::post -detached -nowait $poolId \
             [list ::treqmon::worker::register_event $ctx [filter_body $req] [filter_body $res]]

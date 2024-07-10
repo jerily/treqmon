@@ -7,7 +7,7 @@ lappend auto_path .
 package require twebserver
 package require treqmon
 
-set pool_config [::treqmon::init_main {}]
+set pool_config [::treqmon::init {}]
 puts "pool_config=$pool_config"
 
 set init_script {
@@ -15,10 +15,6 @@ set init_script {
 
     package require twebserver
     package require treqmon
-
-    set treqmon_pool_config [dict get [::twebserver::get_config_dict] treqmon]
-    puts "treqmon_pool_config=$treqmon_pool_config"
-    ::treqmon::init_middleware $treqmon_pool_config
 
     ::twebserver::create_router router
 

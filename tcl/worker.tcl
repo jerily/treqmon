@@ -36,20 +36,28 @@ proc ::treqmon::worker::register_event { ctx req res } {
     tsv::get ::treqmon workerConfig config
 
     # calculate all required event properties
-    set timestamp_start [dict get $req treqmon timestamp_start]
-    set timestamp_end [dict get $res treqmon timestamp_end]
-    set duration [expr { $timestamp_end - $timestamp_start }]
+
+    # TODO:
+    #     remote_hostname - try to detect real remote hostname from remote_ip
 
     set event [dict create \
-        remote_ip       [dict get $ctx addr] \
-        remote_logname  "-" \
-        remote_user     "-" \
-        request         "[dict get $req httpMethod] [dict get $req url] [dict get $req version]" \
-        status_code     [dict get $res statusCode] \
-        response_size   [dict get $res body_size] \
-        timestamp_start $timestamp_start \
-        timestamp_end   $timestamp_end \
-        duration        $duration \
+        remote_addr          [dict get $ctx addr] \
+        remote_hostname      [dict get $ctx addr] \
+        remote_logname       "-" \
+        remote_user          "-" \
+        server_port          [dict get $ctx port] \
+        server_tid           [dict get $ctx treqmon thread_id] \
+        server_pid           [pid] \
+        request_first_line   "[dict get $req httpMethod] [dict get $req url] [dict get $req version]" \
+        request_protocol     [dict get $req version] \
+        request_headers      [dict get $req headers] \
+        request_method       [dict get $req httpMethod] \
+        request_query        [dict get $req queryString] \
+        request_path         [dict get $req path] \
+        request_timestamp    [dict get $req treqmon timestamp] \
+        response_status_code [dict get $res statusCode] \
+        response_size        [dict get $res body_size] \
+        response_timestamp   [dict get $res treqmon timestamp] \
     ]
 
     unset -nocomplain output_id
@@ -86,7 +94,7 @@ proc ::treqmon::worker::register_event { ctx req res } {
     tsv::lock ::treqmon::worker::history {
         # For now, we only keep timestamps, rounded to seconds, for history.
         # If needed in the future, we can store information with additional fields.
-        tsv::lappend ::treqmon::worker::history events [expr { $timestamp_start / 1000000 }]
+        tsv::lappend ::treqmon::worker::history events [expr { [dict get $req treqmon timestamp] / 1000000 }]
         if { [tsv::llength ::treqmon::worker::history events] > [dict get $config -history_max_events] } {
             tsv::lpop ::treqmon::worker::history events 0
         }
