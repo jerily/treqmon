@@ -101,7 +101,7 @@ proc ::treqmon::worker::register_event { ctx req res } {
             [expr { [dict get $req treqmon timestamp] / 1000000 }] \
             [expr { ([dict get $res treqmon timestamp] - [dict get $req treqmon timestamp]) / 1000 }] \
         ]
-        tsv::lappend ::treqmon::worker::history events
+        tsv::lappend ::treqmon::worker::history events $h
         if { [tsv::llength ::treqmon::worker::history events] > [dict get $config -history_max_events] } {
             tsv::lpop ::treqmon::worker::history events 0
         }
