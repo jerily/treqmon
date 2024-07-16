@@ -1,0 +1,202 @@
+# Copyright Jerily LTD. All Rights Reserved.
+# SPDX-FileCopyrightText: 2024 Neofytos Dimitriou (neo@jerily.cy)
+# SPDX-License-Identifier: MIT.
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+package require treqmon
+
+proc history_generator { base data } {
+    set output [list]
+    set timestamp $base
+    foreach { offset duration } $data {
+        # offset as "-" is a comment
+        if { $offset eq "-" } continue
+        incr timestamp -$offset
+        lappend output [list $timestamp $duration]
+    }
+    return [lreverse $output]
+}
+
+
+test treqmonStatistics-1.1 {Test statistics call when there is no statistics, without arguments} -body {
+    ::treqmon::statistics
+} -result {}
+
+test treqmonStatistics-1.2 {Test statistics call when there is no statistics, with 1 argument} -body {
+    ::treqmon::statistics -count_minute
+} -result {0}
+
+test treqmonStatistics-1.3 {Test statistics call when there is no statistics, with 3 arguments} -body {
+    ::treqmon::statistics -count_minute -average_second -count_day
+} -result {0 0 0}
+
+test treqmonStatistics-1.4 {Test statistics call when there is no statistics, with all known arguments} -body {
+    ::treqmon::statistics \
+        -count_second \
+        -count_minute \
+        -count_hour \
+        -count_day \
+        -average_second \
+        -average_minute \
+        -average_hour \
+        -average_day
+} -result {0 0 0 0 0 0 0 0}
+
+test treqmonStatistics-1.5 {Test statistics call when there is no statistics, with relative time - now} -body {
+    ::treqmon::statistics now
+} -result {}
+
+test treqmonStatistics-1.6 {Test statistics call when there is no statistics, with relative time - timestamp} -body {
+    ::treqmon::statistics 123
+} -result {}
+
+test treqmonStatistics-1.7 {Test statistics call when there is no statistics, with all known arguments + relative time} -body {
+    ::treqmon::statistics \
+        -count_second \
+        -count_minute \
+        -count_hour \
+        -count_day \
+        -average_second \
+        -average_minute \
+        -average_hour \
+        -average_day \
+        123
+} -result {0 0 0 0 0 0 0 0}
+
+test treqmonStatistics-1.8 {Test statistics call when there is no statistics, with unknown argument} -body {
+    ::treqmon::statistics a
+} -returnCodes error -result {unknown metric type "a"}
+
+test treqmonStatistics-1.9 {Test statistics call when there is no statistics, with known + unknown argument} -body {
+    ::treqmon::statistics -count_second b
+} -returnCodes error -result {unknown metric type "b"}
+
+test treqmonStatistics-1.10 {Test statistics call when there is no statistics, with known + unknown argument + relative time} -body {
+    ::treqmon::statistics -count_second -foo now
+} -returnCodes error -result {unknown metric type "-foo"}
+
+# The base timestamp for all events
+set base 1720584267
+
+# This is where we define the history of events. The first number is
+# the number of seconds into the past relative to the previous event.
+# The second number is the duration of the event in milliseconds.
+set history [history_generator $base {
+    - { 1st second, 5 events, average duration: 76.2 }
+    0  10
+    0  20
+    0  50
+    0  300
+    0  1
+    -  { 2nd second, 3 events, average duration: 633.6666 }
+    1  401
+    0  500
+    0  1000
+    -  { add more events to fill the first minute }
+    9  10
+    10 40
+    39 5
+    -  { all of the above events occur within one minute, total events: 11, average duration: 211.54545 }
+    -  { the above minute was without events }
+    61 10
+    -  { the above minute was with only one event, average duration: 10 }
+    -  { add more events to fill the first hour }
+    1020 1000
+    1200 4
+    1200 5
+    -  { all of the above events occur within one hour, total events: 15, average duration: 223.7333 }
+    3600 7
+    3600 1
+    3600 50
+    3600 0
+    68459 1
+    -  { all of the above events occur within one day, total events: 20, average duration: 170.75 }
+    1 40
+    -  { the above event relates to the previous day and should be counted on the current day }
+}]
+
+test treqmonStatistics-2.1 {Test statistics counters} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    ::treqmon::statistics -count_second -count_minute -count_hour -count_day $base
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+} -result {5 11 15 20}
+
+test treqmonStatistics-2.2 {Test statistics counter for the previous second} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    ::treqmon::statistics -count_second [expr { $base - 1 }]
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+} -result {3}
+
+test treqmonStatistics-2.3 {Test statistics counter for a period without events} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    ::treqmon::statistics -count_second -count_minute [expr { $base - 60 }]
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+} -result {0 0}
+
+test treqmonStatistics-2.4 {Test statistics counter for a period with one event} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    ::treqmon::statistics -count_second -count_minute [expr { $base - 120 }]
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+} -result {1 1}
+
+test treqmonStatistics-3.1 {Test statistics average} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    ::treqmon::statistics -average_second -average_minute -average_hour -average_day $base
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+} -result {76 212 224 171}
+
+test treqmonStatistics-3.2 {Test statistics average for the previous seconds} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    ::treqmon::statistics -average_second [expr { $base - 1 }]
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+} -result {634}
+
+test treqmonStatistics-3.3 {Test statistics average for a period without events} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    ::treqmon::statistics -average_second -average_minute [expr { $base - 60 }]
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+} -result {0 0}
+
+test treqmonStatistics-3.4 {Test statistics average for a period with one event} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    ::treqmon::statistics -average_second -average_minute [expr { $base - 120 }]
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+} -result {10 10}
+
+test treqmonStatistics-4.1 {Test statistics, all metrics} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    ::treqmon::statistics \
+        -count_second \
+        -average_second \
+        -count_minute \
+        -average_minute \
+        -count_hour \
+        -average_hour \
+        -count_day \
+        -average_day \
+        $base
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+} -result {5 76 11 212 15 224 20 171}
+
