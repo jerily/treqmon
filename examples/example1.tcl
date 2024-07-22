@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2024 Neofytos Dimitriou (neo@jerily.cy)
 # SPDX-License-Identifier: MIT.
 
-lappend auto_path .
-
 package require twebserver
 package require treqmon
 
@@ -11,7 +9,6 @@ set pool_config [::treqmon::init {}]
 puts "pool_config=$pool_config"
 
 set init_script {
-    lappend auto_path .
 
     package require twebserver
     package require treqmon
