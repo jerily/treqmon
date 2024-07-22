@@ -20,9 +20,16 @@ set init_script {
         -leave_proc ::treqmon::leave \
         $router
 
+    ::twebserver::add_route $router GET "/stats" get_stats_handler
     ::twebserver::add_route $router GET "*" get_catchall_handler
 
     interp alias {} process_conn {} $router
+
+    proc get_stats_handler {ctx req} {
+        set html "<html><body><h1>Stats</h1><pre>[::treqmon::statistics count_minute]</pre></body></html>"
+        set res [::twebserver::build_response 200 text/html $html]
+        return $res
+    }
 
     proc get_catchall_handler {ctx req} {
         set res [::twebserver::build_response 200 text/plain "Hello [dict get $req path]"]
