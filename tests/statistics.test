@@ -28,11 +28,11 @@ test treqmonStatistics-1.1 {Test statistics call when there is no statistics, wi
 
 test treqmonStatistics-1.2 {Test statistics call when there is no statistics, with 1 argument} -body {
     ::treqmon::statistics -count_minute
-} -result {0}
+} -result {count_minute 0}
 
 test treqmonStatistics-1.3 {Test statistics call when there is no statistics, with 3 arguments} -body {
     ::treqmon::statistics -count_minute -average_second -count_day
-} -result {0 0 0}
+} -result {count_minute 0 average_second 0 count_day 0}
 
 test treqmonStatistics-1.4 {Test statistics call when there is no statistics, with all known arguments} -body {
     ::treqmon::statistics \
@@ -44,7 +44,7 @@ test treqmonStatistics-1.4 {Test statistics call when there is no statistics, wi
         -average_minute \
         -average_hour \
         -average_day
-} -result {0 0 0 0 0 0 0 0}
+} -result {count_second 0 count_minute 0 count_hour 0 count_day 0 average_second 0 average_minute 0 average_hour 0 average_day 0}
 
 test treqmonStatistics-1.5 {Test statistics call when there is no statistics, with relative time - now} -body {
     ::treqmon::statistics now
@@ -65,7 +65,7 @@ test treqmonStatistics-1.7 {Test statistics call when there is no statistics, wi
         -average_hour \
         -average_day \
         123
-} -result {0 0 0 0 0 0 0 0}
+} -result {count_second 0 count_minute 0 count_hour 0 count_day 0 average_second 0 average_minute 0 average_hour 0 average_day 0}
 
 test treqmonStatistics-1.8 {Test statistics call when there is no statistics, with unknown argument} -body {
     ::treqmon::statistics a
@@ -125,7 +125,7 @@ test treqmonStatistics-2.1 {Test statistics counters} -setup {
     ::treqmon::statistics -count_second -count_minute -count_hour -count_day $base
 } -cleanup {
     tsv::unset ::treqmon::worker::history events
-} -result {5 11 15 20}
+} -result {count_second 5 count_minute 11 count_hour 15 count_day 20}
 
 test treqmonStatistics-2.2 {Test statistics counter for the previous second} -setup {
     tsv::set ::treqmon::worker::history events $history
@@ -133,7 +133,7 @@ test treqmonStatistics-2.2 {Test statistics counter for the previous second} -se
     ::treqmon::statistics -count_second [expr { $base - 1 }]
 } -cleanup {
     tsv::unset ::treqmon::worker::history events
-} -result {3}
+} -result {count_second 3}
 
 test treqmonStatistics-2.3 {Test statistics counter for a period without events} -setup {
     tsv::set ::treqmon::worker::history events $history
@@ -141,7 +141,7 @@ test treqmonStatistics-2.3 {Test statistics counter for a period without events}
     ::treqmon::statistics -count_second -count_minute [expr { $base - 60 }]
 } -cleanup {
     tsv::unset ::treqmon::worker::history events
-} -result {0 0}
+} -result {count_second 0 count_minute 0}
 
 test treqmonStatistics-2.4 {Test statistics counter for a period with one event} -setup {
     tsv::set ::treqmon::worker::history events $history
@@ -149,7 +149,7 @@ test treqmonStatistics-2.4 {Test statistics counter for a period with one event}
     ::treqmon::statistics -count_second -count_minute [expr { $base - 120 }]
 } -cleanup {
     tsv::unset ::treqmon::worker::history events
-} -result {1 1}
+} -result {count_second 1 count_minute 1}
 
 test treqmonStatistics-3.1 {Test statistics average} -setup {
     tsv::set ::treqmon::worker::history events $history
@@ -157,7 +157,7 @@ test treqmonStatistics-3.1 {Test statistics average} -setup {
     ::treqmon::statistics -average_second -average_minute -average_hour -average_day $base
 } -cleanup {
     tsv::unset ::treqmon::worker::history events
-} -result {76 212 224 171}
+} -result {average_second 76 average_minute 212 average_hour 224 average_day 171}
 
 test treqmonStatistics-3.2 {Test statistics average for the previous seconds} -setup {
     tsv::set ::treqmon::worker::history events $history
@@ -165,7 +165,7 @@ test treqmonStatistics-3.2 {Test statistics average for the previous seconds} -s
     ::treqmon::statistics -average_second [expr { $base - 1 }]
 } -cleanup {
     tsv::unset ::treqmon::worker::history events
-} -result {634}
+} -result {average_second 634}
 
 test treqmonStatistics-3.3 {Test statistics average for a period without events} -setup {
     tsv::set ::treqmon::worker::history events $history
@@ -173,7 +173,7 @@ test treqmonStatistics-3.3 {Test statistics average for a period without events}
     ::treqmon::statistics -average_second -average_minute [expr { $base - 60 }]
 } -cleanup {
     tsv::unset ::treqmon::worker::history events
-} -result {0 0}
+} -result {average_second 0 average_minute 0}
 
 test treqmonStatistics-3.4 {Test statistics average for a period with one event} -setup {
     tsv::set ::treqmon::worker::history events $history
@@ -181,7 +181,7 @@ test treqmonStatistics-3.4 {Test statistics average for a period with one event}
     ::treqmon::statistics -average_second -average_minute [expr { $base - 120 }]
 } -cleanup {
     tsv::unset ::treqmon::worker::history events
-} -result {10 10}
+} -result {average_second 10 average_minute 10}
 
 test treqmonStatistics-4.1 {Test statistics, all metrics} -setup {
     tsv::set ::treqmon::worker::history events $history
@@ -198,5 +198,5 @@ test treqmonStatistics-4.1 {Test statistics, all metrics} -setup {
         $base
 } -cleanup {
     tsv::unset ::treqmon::worker::history events
-} -result {5 76 11 212 15 224 20 171}
+} -result {count_second 5 average_second 76 count_minute 11 average_minute 212 count_hour 15 average_hour 224 count_day 20 average_day 171}
 

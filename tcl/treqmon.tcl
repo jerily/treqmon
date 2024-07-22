@@ -91,7 +91,7 @@ proc ::treqmon::statistics { args } {
 
     # A list of metrics to be returned, and in the order in which they
     # appear in the arguments.
-    set metric_list [list]
+    set metric_interval_list [list]
 
     # Known time intervals
     array set intervals {
@@ -123,7 +123,7 @@ proc ::treqmon::statistics { args } {
         }
         dict set metric_count $interval $metric 0
 
-        lappend metric_list [list $metric $interval]
+        lappend metric_interval_list [list $metric $interval]
 
         set interval $intervals($interval)
         if { $interval > $time_window } {
@@ -175,13 +175,11 @@ proc ::treqmon::statistics { args } {
     }
 
     # Generate results
-    set result [list]
-
-    foreach metric $metric_list {
-        lassign $metric metric interval
-        lappend result [expr { round([dict get $metric_count $interval $metric]) }]
+    set result [dict create]
+    foreach metric_interval_pair $metric_interval_list {
+        lassign $metric_interval_pair metric interval
+        dict set result [join $metric_interval_pair {_}] [expr { round([dict get $metric_count $interval $metric]) }]
     }
-
     return $result
 
 }

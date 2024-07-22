@@ -26,7 +26,17 @@ set init_script {
     interp alias {} process_conn {} $router
 
     proc get_stats_handler {ctx req} {
-        set html "<html><body><h1>Stats</h1><pre>[::treqmon::statistics count_minute]</pre></body></html>"
+        set stats [::treqmon::statistics \
+                      -count_second \
+                      -count_minute \
+                      -count_hour \
+                      -count_day \
+                      -average_second \
+                      -average_minute \
+                      -average_hour \
+                      -average_day \
+                      [clock seconds]]
+        set html "<html><body><h1>Stats</h1><pre>${stats}</pre></body></html>"
         set res [::twebserver::build_response 200 text/html $html]
         return $res
     }
@@ -43,6 +53,7 @@ set config_dict [dict create \
     gzip on \
     gzip_types [list text/html text/plain application/json] \
     gzip_min_length 8192 \
+    conn_timeout_millis 10000 \
     treqmon $pool_config]
 
 set server_handle [::twebserver::create_server -with_router $config_dict process_conn $init_script]
