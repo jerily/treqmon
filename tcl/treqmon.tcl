@@ -82,6 +82,202 @@ proc ::treqmon::filter_body { d } {
     return $d
 }
 
+proc ::treqmon::statistics_series { args } {
+
+    # Check if the last argument is a relative time
+    set timestamp_current [lindex $args end]
+    if { $timestamp_current eq "now" || [string is integer -strict $timestamp_current] } {
+        # Remove the last argument from the argument list
+        set args [lreplace $args end end]
+    } else {
+        set timestamp_current "now"
+    }
+
+    if { $timestamp_current eq "now" } {
+        set timestamp_current [clock seconds]
+    }
+
+    # Max number of events in the heavy_requests list
+    set heavy_requests_max_count 5
+    # The default interval
+    set interval "minute"
+
+    for { set i 0 } { $i < [llength $args] } { incr i } {
+        set arg [lindex $args $i]
+        if { $arg ni {-interval -heavy_requests} } {
+            return -code error "unknown option \"$arg\", must be\
+                -interval or -heavy_requests"
+        }
+        incr i
+        if { $i == [llength $args] } {
+            return -code error "missing value for option \"$arg\""
+        }
+        if { $arg eq "-interval" } {
+            set interval [lindex $args $i]
+            if { $interval ni {minute hour day} } {
+                return -code error "unknown interval \"$interval\",\
+                    should be minute, hour or day"
+            }
+        } else {
+            set heavy_requests_max_count [lindex $args $i]
+            if { ![string is integer -strict $heavy_requests_max_count] } {
+                return -code error "option -heavy_requests requires an integer\
+                    value, but got \"$heavy_requests_max_count\""
+            }
+        }
+
+    }
+
+    if { $interval eq "minute" } {
+        set timestamp_end [expr { $timestamp_current - 60 + 1 }]
+        # interval is 1 second
+        set interval 1
+    } elseif { $interval eq "hour" } {
+        set timestamp_end [expr { $timestamp_current - 60*60 + 1 }]
+        # interval is 1 minute
+        set interval 60
+    } elseif { $interval eq "day" } {
+        set timestamp_end [expr { $timestamp_current - 24*60*60 + 1 }]
+        # interval is 1 hour
+        set interval [expr { 60*60 }]
+    }
+
+    # Getting the request statistics into a variable so as not to block
+    # other threads from adding new records.
+    if { ![tsv::get ::treqmon::worker::history events events] } {
+        # Failed to retrieve events. Let's use an empty list.
+        set events [list]
+    }
+
+    # Initialize series dict.
+    #     count - number of events
+    #     average - average response time
+    #     duration_max - max request duration
+    #     duration_min - min request duration
+    for { set i $timestamp_current } { $i >= $timestamp_end } { incr i -$interval } {
+        dict set series $i [dict create {*}{
+            count 0
+            average 0
+            duration_max -1
+            duration_min -1
+        }]
+    }
+
+    set heavy_requests [list]
+
+    set events [lreverse $events]
+    foreach ev $events {
+
+        lassign $ev timestamp duration
+
+        # Skip events registered before the time stamp of interest.
+        if { $timestamp > $timestamp_current } {
+            continue
+        }
+
+        if { $timestamp < $timestamp_end } {
+            break
+        }
+
+        # squash the timestamp to the required interval
+        if { $interval > 1 } {
+            set x [expr { ($timestamp_current - $timestamp) / $interval }]
+            set timestamp [expr { $timestamp_current - $x * $interval }]
+        }
+
+        # Calculate total number of events for the current timestamp
+        dict set series $timestamp count [set count [expr { [dict get $series $timestamp count] + 1 }]]
+
+        # Calculate average duration for the current timestamp
+        dict set series $timestamp average [expr \
+            { 1.0 * ((1.0 * [dict get $series $timestamp average] * ($count - 1)) + $duration) / $count }]
+
+        set max [dict get $series $timestamp duration_max]
+        if { $max == -1 || $max < $duration } {
+            dict set series $timestamp duration_max $duration
+        }
+
+        set min [dict get $series $timestamp duration_min]
+        if { $min == -1 || $min > $duration } {
+            dict set series $timestamp duration_min $duration
+        }
+
+        if { [llength $heavy_requests] < $heavy_requests_max_count } {
+
+            lappend heavy_requests $ev
+            # Keep the list sorted
+            set heavy_requests [lsort -integer -index 1 -decreasing $heavy_requests]
+
+        } else {
+
+            set min_duration [lindex $heavy_requests {end 1}]
+
+            if { $duration > $min_duration } {
+                # If the duration of the current event is longer than the minimum
+                # duration in heavy_requests_min, then add this event to
+                # heavy_requests_min.
+
+                # Our heavy_requests list is sorted in decreasing order. Replace
+                # the last element as it is the element with the shortest duration.
+                set heavy_requests [lreplace $heavy_requests end end $ev]
+
+                # Keep the list sorted
+                set heavy_requests [lsort -integer -index 1 -decreasing $heavy_requests]
+            }
+
+        }
+
+    }
+
+    set sum [dict create {*}{
+        count 0
+        count_min -1
+        count_max -1
+        average_max -1
+        average_min -1
+        duration_max -1
+        duration_min -1
+    }]
+    # round all average values and calculate summary
+    dict for { k v } $series {
+
+        # skip entry if its counter is zero
+        if { ![dict get $v count] } {
+            continue
+        }
+
+        dict set v average [expr { round([dict get $v average]) }]
+        dict set series $k $v
+
+        dict incr sum count [dict get $v count]
+
+        if { [dict get $sum count_max] == -1 || [dict get $v count] > [dict get $sum count_max] } {
+            dict set sum count_max [dict get $v count]
+        }
+        if { [dict get $sum count_min] == -1 || [dict get $v count] < [dict get $sum count_min] } {
+            dict set sum count_min [dict get $v count]
+        }
+
+        if { [dict get $sum average_max] == -1 || [dict get $v average] > [dict get $sum average_max] } {
+            dict set sum average_max [dict get $v average]
+        }
+        if { [dict get $sum average_min] == -1 || [dict get $v average] < [dict get $sum average_min] } {
+            dict set sum average_min [dict get $v average]
+        }
+
+        if { [dict get $sum duration_max] == -1 || [dict get $v duration_max] > [dict get $sum duration_max] } {
+            dict set sum duration_max [dict get $v duration_max]
+        }
+        if { [dict get $sum duration_min] == -1 || [dict get $v duration_min] < [dict get $sum duration_min] } {
+            dict set sum duration_min [dict get $v duration_min]
+        }
+
+    }
+
+    return [dict create series $series heavy_requests $heavy_requests summary $sum]
+
+}
+
 proc ::treqmon::statistics { args } {
 
     # Time window in seconds for which we want to get statistics.

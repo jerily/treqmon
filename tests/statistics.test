@@ -200,3 +200,288 @@ test treqmonStatistics-4.1 {Test statistics, all metrics} -setup {
     tsv::unset ::treqmon::worker::history events
 } -result {count_second 5 average_second 76 count_minute 11 average_minute 212 count_hour 15 average_hour 224 count_day 20 average_day 171}
 
+proc series2result { series } {
+    # remove empty elements from series to make checking easier
+    dict for { k v } $series {
+        if { ![dict get $v count] } {
+            dict unset series $k
+        }
+    }
+    # sort series
+    set series [lsort -integer -stride 2 -index 0 -decreasing $series]
+    # convert a series into a list, where each item is a separate list element
+    return [lmap { a b } $series { list $a $b }]
+}
+
+test treqmonStatistics-5.1.1 {Test event series, -interval minute} -body {
+    set stats [::treqmon::statistics_series -interval minute $base]
+    set series [dict keys [dict get $stats series]]
+    set series [lsort -integer -decreasing $series]
+    # The first value should be the base
+    if { [lindex $series 0] != $base } {
+        return -code error "The first value is not the base: [lindex $series 0] != $base"
+    }
+    # difference between values should be exactly 1 second
+    unset -nocomplain prev
+    foreach timestamp $series {
+        if { [info exists prev] && ($prev - $timestamp) != 1 } {
+            return -code error "($prev - $timestamp) != 1"
+        }
+        set prev $timestamp
+    }
+    # returns the number of values, for a minute interval it should be equal to 60
+    llength $series
+} -cleanup {
+    unset -nocomplain stats series prev timestamp
+} -result 60
+
+test treqmonStatistics-5.1.2 {Test event series, -interval hour} -body {
+    set stats [::treqmon::statistics_series -interval hour $base]
+    set series [dict keys [dict get $stats series]]
+    set series [lsort -integer -decreasing $series]
+    # The first value should be the base
+    if { [lindex $series 0] != $base } {
+        return -code error "The first value is not the base: [lindex $series 0] != $base"
+    }
+    # difference between values should be exactly 60 second
+    unset -nocomplain prev
+    foreach timestamp $series {
+        if { [info exists prev] && ($prev - $timestamp) != 60 } {
+            return -code error "($prev - $timestamp) != 60"
+        }
+        set prev $timestamp
+    }
+    # returns the number of values, for an hour interval it should be equal to 60
+    llength $series
+} -cleanup {
+    unset -nocomplain stats series prev timestamp
+} -result 60
+
+test treqmonStatistics-5.1.3 {Test event series, -interval day} -body {
+    set stats [::treqmon::statistics_series -interval day $base]
+    set series [dict keys [dict get $stats series]]
+    set series [lsort -integer -decreasing $series]
+    # The first value should be the base
+    if { [lindex $series 0] != $base } {
+        return -code error "The first value is not the base: [lindex $series 0] != $base"
+    }
+    # difference between values should be exactly 60*60 second
+    unset -nocomplain prev
+    foreach timestamp $series {
+        if { [info exists prev] && ($prev - $timestamp) != (60*60) } {
+            return -code error "($prev - $timestamp) != (60*60)"
+        }
+        set prev $timestamp
+    }
+    # returns the number of values, for a day interval it should be equal to 24
+    llength $series
+} -cleanup {
+    unset -nocomplain stats series prev timestamp
+} -result 24
+
+test treqmonStatistics-5.1.4.1 {Test event series, wrong value for -interval} -body {
+    set stats [::treqmon::statistics_series -interval foo $base]
+} -cleanup {
+    unset -nocomplain stats
+} -returnCodes error -result {unknown interval "foo", should be minute, hour or day}
+
+test treqmonStatistics-5.1.4.2 {Test event series, no value for -interval} -body {
+    set stats [::treqmon::statistics_series -interval $base]
+} -cleanup {
+    unset -nocomplain stats
+} -returnCodes error -result {missing value for option "-interval"}
+
+test treqmonStatistics-5.2.1 {Test event series, -heavy_requests 1} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    llength [dict get [::treqmon::statistics_series -heavy_requests 1 $base] heavy_requests]
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+} -result 1
+
+test treqmonStatistics-5.2.2 {Test event series, -heavy_requests 3} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    llength [dict get [::treqmon::statistics_series -heavy_requests 3 $base] heavy_requests]
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+} -result 3
+
+test treqmonStatistics-5.2.3.1 {Test event series, wrong value for -heavy_requests} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    ::treqmon::statistics_series -heavy_requests a $base
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+} -returnCodes error -result {option -heavy_requests requires an integer value, but got "a"}
+
+test treqmonStatistics-5.2.3.2 {Test event series, no value for -heavy_requests} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    ::treqmon::statistics_series -heavy_requests $base
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+} -returnCodes error -result {missing value for option "-heavy_requests"}
+
+test treqmonStatistics-5.3.1 {Test event series, -interval minute, case #1} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    set stat [::treqmon::statistics_series -interval minute $base]
+
+    # prepare the test result
+    set result [list]
+    # add total number of elements in series
+    lappend result [dict size [dict get $stat series]]
+    lappend result [dict get $stat heavy_requests]
+    lappend result [dict get $stat summary]
+    lappend result {*}[series2result [dict get $stat series]]
+
+    join $result \n
+
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+    unset -nocomplain stats result heavy_req series k v a b
+} -result {60
+{1720584266 1000} {1720584266 500} {1720584266 401} {1720584267 300} {1720584267 50}
+count 11 count_min 1 count_max 5 average_max 634 average_min 5 duration_max 1000 duration_min 1
+1720584267 {count 5 average 76 duration_max 300 duration_min 1}
+1720584266 {count 3 average 634 duration_max 1000 duration_min 401}
+1720584257 {count 1 average 10 duration_max 10 duration_min 10}
+1720584247 {count 1 average 40 duration_max 40 duration_min 40}
+1720584208 {count 1 average 5 duration_max 5 duration_min 5}}
+
+test treqmonStatistics-5.3.2 {Test event series, -interval minute, case #2} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    set stat [::treqmon::statistics_series -interval minute [expr { $base - 1 }]]
+
+    # prepare the test result
+    set result [list]
+    # add total number of elements in series
+    lappend result [dict size [dict get $stat series]]
+    lappend result [dict get $stat heavy_requests]
+    lappend result [dict get $stat summary]
+    lappend result {*}[series2result [dict get $stat series]]
+
+    join $result \n
+
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+    unset -nocomplain stats result heavy_req series k v a b
+} -result {60
+{1720584266 1000} {1720584266 500} {1720584266 401} {1720584247 40} {1720584257 10}
+count 6 count_min 1 count_max 3 average_max 634 average_min 5 duration_max 1000 duration_min 5
+1720584266 {count 3 average 634 duration_max 1000 duration_min 401}
+1720584257 {count 1 average 10 duration_max 10 duration_min 10}
+1720584247 {count 1 average 40 duration_max 40 duration_min 40}
+1720584208 {count 1 average 5 duration_max 5 duration_min 5}}
+
+test treqmonStatistics-5.4.1 {Test event series, -interval hour, case #1} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    set stat [::treqmon::statistics_series -interval hour $base]
+
+    # prepare the test result
+    set result [list]
+    # add total number of elements in series
+    lappend result [dict size [dict get $stat series]]
+    lappend result [dict get $stat heavy_requests]
+    lappend result [dict get $stat summary]
+    lappend result {*}[series2result [dict get $stat series]]
+
+    join $result \n
+
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+    unset -nocomplain stats result heavy_req series k v a b
+} -result {60
+{1720584266 1000} {1720583127 1000} {1720584266 500} {1720584266 401} {1720584267 300}
+count 15 count_min 1 count_max 11 average_max 1000 average_min 4 duration_max 1000 duration_min 1
+1720584267 {count 11 average 212 duration_max 1000 duration_min 1}
+1720584147 {count 1 average 10 duration_max 10 duration_min 10}
+1720583127 {count 1 average 1000 duration_max 1000 duration_min 1000}
+1720581927 {count 1 average 4 duration_max 4 duration_min 4}
+1720580727 {count 1 average 5 duration_max 5 duration_min 5}}
+
+test treqmonStatistics-5.4.2 {Test event series, -interval hour, case #2} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    set stat [::treqmon::statistics_series -interval hour [expr { $base - 1 }]]
+
+    # prepare the test result
+    set result [list]
+    # add total number of elements in series
+    lappend result [dict size [dict get $stat series]]
+    lappend result [dict get $stat heavy_requests]
+    lappend result [dict get $stat summary]
+    lappend result {*}[series2result [dict get $stat series]]
+
+    join $result \n
+
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+    unset -nocomplain stats result heavy_req series k v a b
+} -result {60
+{1720584266 1000} {1720583127 1000} {1720584266 500} {1720584266 401} {1720584247 40}
+count 10 count_min 1 count_max 6 average_max 1000 average_min 4 duration_max 1000 duration_min 4
+1720584266 {count 6 average 326 duration_max 1000 duration_min 5}
+1720584206 {count 1 average 10 duration_max 10 duration_min 10}
+1720583186 {count 1 average 1000 duration_max 1000 duration_min 1000}
+1720581986 {count 1 average 4 duration_max 4 duration_min 4}
+1720580786 {count 1 average 5 duration_max 5 duration_min 5}}
+
+test treqmonStatistics-5.5.1 {Test event series, -interval day, case #1} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    set stat [::treqmon::statistics_series -interval day $base]
+
+    # prepare the test result
+    set result [list]
+    # add total number of elements in series
+    lappend result [dict size [dict get $stat series]]
+    lappend result [dict get $stat heavy_requests]
+    lappend result [dict get $stat summary]
+    lappend result {*}[series2result [dict get $stat series]]
+
+    join $result \n
+
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+    unset -nocomplain stats result heavy_req series k v a b
+} -result {24
+{1720584266 1000} {1720583127 1000} {1720584266 500} {1720584266 401} {1720584267 300}
+count 20 count_min 1 count_max 15 average_max 224 average_min 0 duration_max 1000 duration_min 0
+1720584267 {count 15 average 224 duration_max 1000 duration_min 1}
+1720580667 {count 1 average 7 duration_max 7 duration_min 7}
+1720577067 {count 1 average 1 duration_max 1 duration_min 1}
+1720573467 {count 1 average 50 duration_max 50 duration_min 50}
+1720569867 {count 1 average 0 duration_max 0 duration_min 0}
+1720501467 {count 1 average 1 duration_max 1 duration_min 1}}
+
+test treqmonStatistics-5.5.2 {Test event series, -interval day, case #2} -setup {
+    tsv::set ::treqmon::worker::history events $history
+} -body {
+    set stat [::treqmon::statistics_series -interval day [expr { $base - 1 }]]
+
+    # prepare the test result
+    set result [list]
+    # add total number of elements in series
+    lappend result [dict size [dict get $stat series]]
+    lappend result [dict get $stat heavy_requests]
+    lappend result [dict get $stat summary]
+    lappend result {*}[series2result [dict get $stat series]]
+
+    join $result \n
+
+} -cleanup {
+    tsv::unset ::treqmon::worker::history events
+    unset -nocomplain stats result heavy_req series k v a b
+} -result {24
+{1720584266 1000} {1720583127 1000} {1720584266 500} {1720584266 401} {1720569927 50}
+count 16 count_min 1 count_max 10 average_max 298 average_min 0 duration_max 1000 duration_min 0
+1720584266 {count 10 average 298 duration_max 1000 duration_min 4}
+1720580666 {count 1 average 7 duration_max 7 duration_min 7}
+1720577066 {count 1 average 1 duration_max 1 duration_min 1}
+1720573466 {count 1 average 50 duration_max 50 duration_min 50}
+1720569866 {count 1 average 0 duration_max 0 duration_min 0}
+1720501466 {count 2 average 21 duration_max 40 duration_min 1}}
