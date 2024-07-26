@@ -1,0 +1,14 @@
+<html>
+    <body>
+        <h3>Stats</h3>
+        <pre>${stats}</pre>
+        <h3>Page View Statistics</h3>
+        <tpl foreach="k v" in="${page_view_stats}">
+            <pre>${k}: ${v}</pre>
+        </tpl>
+        <h3>Average Response Times</h3>
+        <tpl foreach="k v" in="${response_time_stats}">
+            <pre>${k}: ${v}</pre>
+        </tpl>
+    </body>
+</html>

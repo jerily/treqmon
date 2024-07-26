@@ -82,6 +82,193 @@ proc ::treqmon::filter_body { d } {
     return $d
 }
 
+# Get the history of events
+# The function takes two optional arguments: from_seconds and to_seconds.
+# If the arguments are not specified, the function returns all events.
+# If the arguments are specified, the function returns events that fall
+# within the specified time interval.
+#
+# Example:
+#     set events {
+#         { 100 1 }
+#         { 200 2 }
+#         { 300 3 }
+#         { 400 4 }
+#         { 500 5 }
+#         { 600 6 }
+#     }
+#     set result [get_history_events 200 500]
+#     # The result will be:
+#     #     { 200 2 }
+#     #     { 300 3 }
+#     #     { 400 4 }
+#     #     { 500 5 }
+#     set result [get_history_events]
+#     # The result will be:
+#     #     { 100 1 }
+#     #     { 200 2 }
+#     #     { 300 3 }
+#     #     { 400 4 }
+#     #     { 500 5 }
+#     #     { 600 6 }
+#
+proc ::treqmon::get_history_events { {from_seconds ""} {to_seconds ""} } {
+
+    if { $from_seconds ne {} && ![string is integer -strict $from_seconds] } {
+        error "from_seconds must be an integer"
+    }
+
+    if { $to_seconds ne {} && ![string is integer -strict $to_seconds] } {
+        error "to_seconds must be an integer"
+    }
+
+    if { ![tsv::get ::treqmon::worker::history events history_events] } {
+        error "Failed to retrieve events"
+    }
+
+    set history_events [lsort -integer -index 0 $history_events]
+
+    set result [list]
+    foreach ev $history_events {
+        lassign $ev timestamp duration
+        if { $from_seconds ne {} && $timestamp < $from_seconds } {
+            continue
+        }
+        if { $to_seconds ne {} && $timestamp > $to_seconds } {
+            continue
+        }
+        lappend result $ev
+    }
+    return $result
+}
+
+# Split events by interval
+# The function takes a list of events and an interval (second, minute, hour, day)
+# and returns a dictionary where the keys are the timestamps of the beginning of
+# the interval and the values are lists of events that fall into this interval.
+# The events are sorted by timestamp.
+#
+# Example:
+#     set events {
+#         { 100 1 }
+#         { 200 2 }
+#         { 300 3 }
+#         { 400 4 }
+#         { 500 5 }
+#         { 600 6 }
+#     }
+#     set result [split_by_interval $events minute]
+#     # The result will be:
+#     #     0 { { 100 1 } { 200 2 } }
+#     #     300 { { 300 3 } { 400 4 } }
+#     #     600 { { 500 5 } { 600 6 } }
+#
+proc ::treqmon::split_by_interval { events interval } {
+
+    if { $interval ni {second minute hour day} } {
+        return -code error "unknown interval \"$interval\", should be second, minute, hour or day"
+    }
+
+    array set intervals {
+        second 1
+        minute 60
+        hour   3600
+        day    86400
+    }
+
+    set interval_seconds $intervals($interval)
+
+    set result [dict create]
+    foreach ev $events {
+        # timestamp is in seconds
+        lassign $ev timestamp duration
+        set key [expr { $timestamp - ($timestamp % $interval_seconds) }]
+        if { [dict exists $result $key] } {
+            set evs [dict get $result $key]
+        } else {
+            set evs [list]
+        }
+        set evs [lsort -integer -index 0 [lappend evs $ev]]
+        dict set result $key $evs
+    }
+    return $result
+}
+
+# Get the number of page views for all given intervals
+# The function takes three optional arguments: from_seconds, to_seconds, and intervals.
+# If the arguments are not specified, the function returns the number of page views
+# for all intervals (second, minute, hour).
+# If the arguments are specified, the function returns the number of page views
+# for the specified intervals.
+#
+# Example:
+#     set events {
+#         { 100 1 }
+#         { 200 2 }
+#         { 300 3 }
+#         { 400 4 }
+#         { 500 5 }
+#         { 600 6 }
+#     }
+#     set events [get_history_events 200 500]
+#     set result [get_page_views $events {second minute}]
+#     # The result will be:
+#     #     second { { 200 1 } { 300 1 } { 400 1 } { 500 1 } }
+#     #     minute { { 200 2 } { 400 2 } }
+#
+proc ::treqmon::get_page_views { events {intervals "second minute hour"} } {
+    set result [list]
+    foreach interval $intervals {
+        set events_by_interval [::treqmon::split_by_interval $events $interval]
+        lappend result $interval [dict map { k v } $events_by_interval {
+            list $k [llength $v]
+        }]
+    }
+    return $result
+}
+
+# Get the average response time for all given intervals
+# The function takes two arguments: events and intervals (optional)
+# If the intervals are not specified, the function returns the average response time
+# for all intervals (second, minute, hour).
+# If the intervals are specified, the function returns the average response time
+# for the specified intervals.
+#
+# Example:
+#     set events {
+#         { 100 1 }
+#         { 200 2 }
+#         { 300 3 }
+#         { 400 4 }
+#         { 500 5 }
+#         { 600 6 }
+#     }
+#     set events [get_history_events 200 500]
+#     set result [get_response_times $events {second minute}]
+#     # The result will be:
+#     #     second { { 200 2 } { 300 3 } { 400 4 } { 500 5 } }
+#     #     minute { { 200 2 } { 400 5.5 } }
+#
+proc ::treqmon::get_response_times { events {intervals "second minute hour"} } {
+    set result [list]
+    foreach interval $intervals {
+        set events_by_interval [::treqmon::split_by_interval $events $interval]
+        lappend result $interval [dict map { k v } $events_by_interval {
+            set sum 0
+            foreach ev $v {
+                lassign $ev timestamp duration
+                if { ![string is integer -strict $duration] } {
+                    puts "duration must be an integer: $duration"
+                    continue
+                }
+                incr sum $duration
+            }
+            list $k [expr { $sum / [llength $v] }]
+        }]
+    }
+    return $result
+}
+
 proc ::treqmon::statistics_series { args } {
 
     # Check if the last argument is a relative time

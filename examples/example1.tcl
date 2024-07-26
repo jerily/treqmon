@@ -12,6 +12,14 @@ set init_script {
 
     package require twebserver
     package require treqmon
+    package require thtml
+
+    ::thtml::init [dict create \
+        debug 1 \
+        cache 0 \
+        target_lang tcl \
+        rootdir [::twebserver::get_rootdir] \
+        cachedir "/tmp/cache/thtml/"]
 
     ::twebserver::create_router router
 
@@ -36,7 +44,13 @@ set init_script {
                       -average_hour \
                       -average_day \
                       [clock seconds]]
-        set html "<html><body><h1>Stats</h1><pre>${stats}</pre></body></html>"
+
+        set since_seconds [expr {[clock seconds] - 3600}]
+        set events [::treqmon::get_history_events $since_seconds]
+        set page_view_stats [::treqmon::get_page_views $events]
+        set response_time_stats [::treqmon::get_response_times $events]
+        set data [dict merge $req [list stats $stats page_view_stats $page_view_stats response_time_stats $response_time_stats]]
+        set html [::thtml::renderfile stats.thtml $data]
         set res [::twebserver::build_response 200 text/html $html]
         return $res
     }
