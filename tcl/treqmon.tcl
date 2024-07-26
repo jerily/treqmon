@@ -154,7 +154,8 @@ proc ::treqmon::get_history_events {{now_in_seconds ""} {from_seconds ""} {to_se
     }
 
     if { ![tsv::get ::treqmon::worker::history events history_events] } {
-        error "Failed to retrieve events"
+        # error "Failed to retrieve events"
+        set history_events [list]
     }
 
     set events [lsort -integer -index 0 $history_events]

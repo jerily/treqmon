@@ -13,6 +13,7 @@ set init_script {
     package require twebserver
     package require treqmon
     package require thtml
+    package require tjson
 
     ::thtml::init [dict create \
         debug 1 \
@@ -48,7 +49,70 @@ set init_script {
         set events [::treqmon::get_history_events]
         set page_view_stats [::treqmon::get_page_views $events]
         set response_time_stats [::treqmon::get_response_times $events]
-        set data [dict merge $req [list stats $stats page_view_stats $page_view_stats response_time_stats $response_time_stats]]
+
+        set minute_stats [dict get $page_view_stats minute]
+        set page_view_stats_minute_labels [dict keys $minute_stats]
+
+        set now_in_seconds [clock seconds]
+        set max_label [lindex $page_view_stats_minute_labels end]
+        if { $max_label eq {} } {
+            set max_label [clock seconds]
+        }
+        set min_label [expr { $max_label - 3600 }]
+
+        # create all labels from min to max by adding 60 seconds to each
+        set page_view_stats_minute_labels [list $min_label]
+        set current_label $min_label
+        while { $current_label < $max_label } {
+            set current_label [expr {$current_label + 60}]
+            lappend page_view_stats_minute_labels $current_label
+        }
+
+        # now fill with zeros the missing values
+        set page_view_stats_minute_data [list]
+        foreach label $page_view_stats_minute_labels {
+            if { [dict exists $minute_stats $label] } {
+                lassign [dict get $minute_stats $label] timestamp count
+                lappend page_view_stats_minute_data $count
+            } else {
+                lappend page_view_stats_minute_data 0
+            }
+        }
+
+        puts page_view_stats_minute_data=$page_view_stats_minute_data
+
+        # insert S before each element in the labels list
+        set page_view_stats_minute_labels_typed [lmap x $page_view_stats_minute_labels {list S [lindex $x 0]}]
+
+        # insert N before each element in the data list
+        set page_view_stats_minute_data_typed [lmap x $page_view_stats_minute_data {list N $x}]
+
+        set dataset_typed [list M [list \
+            label {S "Page Views per Minute"} \
+            data [list L $page_view_stats_minute_data_typed] \
+            backgroundColor {S "rgba(255, 99, 132, 0.2)"} \
+            borderColor {S "rgba(255, 99, 132, 1)"} \
+            borderWidth {N 1} \
+        ]]
+
+        set data_typed [list M [list \
+           labels [list L $page_view_stats_minute_labels_typed] \
+           datasets [list L [list $dataset_typed]] \
+       ]]
+
+        ::tjson::create [list M [list \
+            type {S line} \
+            data $data_typed \
+            options {M {scales {M {y {M {beginAtZero {BOOL 1}}}}}}}]] \
+            chart_config_node
+
+        set data [dict merge $req \
+            [list \
+                stats $stats \
+                page_view_stats $page_view_stats \
+                chart_config [::tjson::to_json $chart_config_node] \
+                response_time_stats $response_time_stats]]
+
         set html [::thtml::renderfile stats.thtml $data]
         set res [::twebserver::build_response 200 text/html $html]
         return $res

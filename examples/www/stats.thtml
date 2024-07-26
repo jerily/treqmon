@@ -1,4 +1,7 @@
 <html>
+    <head>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </head>
     <body>
         <h3>Stats</h3>
         <pre>${stats}</pre>
@@ -6,9 +9,16 @@
         <tpl foreach="k v" in="${page_view_stats}">
             <pre>${k}: ${v}</pre>
         </tpl>
+        <div id="page_views_per_minute_chart">
+            <canvas id="page_views_per_minute_chart_canvas"></canvas>
+        </div>
         <h3>Average Response Times</h3>
         <tpl foreach="k v" in="${response_time_stats}">
             <pre>${k}: ${v}</pre>
         </tpl>
     </body>
+    <script>
+        var ctx = document.getElementById('page_views_per_minute_chart_canvas').getContext('2d');
+        var page_views_per_minute_chart = new Chart(ctx, $chart_config);
+    </script>
 </html>
