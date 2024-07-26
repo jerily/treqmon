@@ -62,7 +62,7 @@ set history [history_generator $base {
 test treqmon-split_by_interval-1 {interval day} -setup {
     tsv::set ::treqmon::worker::history events $history
 } -body {
-    set events [::treqmon::get_history_events]
+    set events [::treqmon::get_history_events $base]
     set result [::treqmon::split_by_interval $events day]
     return $result
 } -cleanup {
@@ -73,7 +73,7 @@ test treqmon-split_by_interval-1 {interval day} -setup {
 test treqmon-split_by_interval-2 {interval hour} -setup {
     tsv::set ::treqmon::worker::history events $history
 } -body {
-    set events [::treqmon::get_history_events]
+    set events [::treqmon::get_history_events $base]
     set result [::treqmon::split_by_interval $events hour]
     return $result
 } -cleanup {
@@ -84,7 +84,7 @@ test treqmon-split_by_interval-2 {interval hour} -setup {
 test treqmon-split_by_interval-3 {interval minute} -setup {
     tsv::set ::treqmon::worker::history events $history
 } -body {
-    set events [::treqmon::get_history_events]
+    set events [::treqmon::get_history_events $base]
     set result [::treqmon::split_by_interval $events minute]
     return $result
 } -cleanup {
@@ -95,7 +95,7 @@ test treqmon-split_by_interval-3 {interval minute} -setup {
 test treqmon-split_by_interval-4 {interval second} -setup {
     tsv::set ::treqmon::worker::history events $history
 } -body {
-    set events [::treqmon::get_history_events]
+    set events [::treqmon::get_history_events $base]
     set result [::treqmon::split_by_interval $events second]
     return $result
 } -cleanup {
@@ -106,21 +106,21 @@ test treqmon-split_by_interval-4 {interval second} -setup {
 test treqmon-get_page_views-1 {interval second minute hour} -setup {
     tsv::set ::treqmon::worker::history events $history
 } -body {
-    set events [::treqmon::get_history_events]
-    set result [::treqmon::get_page_views $events {second minute hour}]
+    set events [::treqmon::get_history_events $base]
+    set result [::treqmon::get_page_views $events $base {second minute hour}]
     return $result
 } -cleanup {
     tsv::unset ::treqmon::worker::history events
-} -result {second {1720497867 {1720497867 1} 1720497868 {1720497868 1} 1720566327 {1720566327 1} 1720569927 {1720569927 1} 1720573527 {1720573527 1} 1720577127 {1720577127 1} 1720580727 {1720580727 1} 1720581927 {1720581927 1} 1720583127 {1720583127 1} 1720584147 {1720584147 1} 1720584208 {1720584208 1} 1720584247 {1720584247 1} 1720584257 {1720584257 1} 1720584266 {1720584266 3} 1720584267 {1720584267 5}} minute {1720497840 {1720497840 2} 1720566300 {1720566300 1} 1720569900 {1720569900 1} 1720573500 {1720573500 1} 1720577100 {1720577100 1} 1720580700 {1720580700 1} 1720581900 {1720581900 1} 1720583100 {1720583100 1} 1720584120 {1720584120 1} 1720584180 {1720584180 1} 1720584240 {1720584240 10}} hour {1720497600 {1720497600 2} 1720566000 {1720566000 1} 1720569600 {1720569600 1} 1720573200 {1720573200 1} 1720576800 {1720576800 1} 1720580400 {1720580400 3} 1720584000 {1720584000 12}}}
+} -result {second {1720584208 {1720584208 1} 1720584247 {1720584247 1} 1720584257 {1720584257 1} 1720584266 {1720584266 3} 1720584267 {1720584267 5}} minute {1720580700 {1720580700 1} 1720581900 {1720581900 1} 1720583100 {1720583100 1} 1720584120 {1720584120 1} 1720584180 {1720584180 1} 1720584240 {1720584240 10}} hour {1720497600 {1720497600 2} 1720566000 {1720566000 1} 1720569600 {1720569600 1} 1720573200 {1720573200 1} 1720576800 {1720576800 1} 1720580400 {1720580400 3} 1720584000 {1720584000 12}}}
 
 
 test treqmon-get_response_times-1 {interval second minute hour} -setup {
     tsv::set ::treqmon::worker::history events $history
 } -body {
-    set events [::treqmon::get_history_events]
-    set result [::treqmon::get_response_times $events {second minute hour}]
+    set events [::treqmon::get_history_events $base]
+    set result [::treqmon::get_response_times $events $base {second minute hour}]
     return $result
 } -cleanup {
     tsv::unset ::treqmon::worker::history events
-} -result {second {1720497867 {1720497867 40} 1720497868 {1720497868 1} 1720566327 {1720566327 0} 1720569927 {1720569927 50} 1720573527 {1720573527 1} 1720577127 {1720577127 7} 1720580727 {1720580727 5} 1720581927 {1720581927 4} 1720583127 {1720583127 1000} 1720584147 {1720584147 10} 1720584208 {1720584208 5} 1720584247 {1720584247 40} 1720584257 {1720584257 10} 1720584266 {1720584266 633} 1720584267 {1720584267 76}} minute {1720497840 {1720497840 20} 1720566300 {1720566300 0} 1720569900 {1720569900 50} 1720573500 {1720573500 1} 1720577100 {1720577100 7} 1720580700 {1720580700 5} 1720581900 {1720581900 4} 1720583100 {1720583100 1000} 1720584120 {1720584120 10} 1720584180 {1720584180 5} 1720584240 {1720584240 233}} hour {1720497600 {1720497600 20} 1720566000 {1720566000 0} 1720569600 {1720569600 50} 1720573200 {1720573200 1} 1720576800 {1720576800 7} 1720580400 {1720580400 336} 1720584000 {1720584000 195}}}
+} -result {second {1720584208 {1720584208 5} 1720584247 {1720584247 40} 1720584257 {1720584257 10} 1720584266 {1720584266 633} 1720584267 {1720584267 76}} minute {1720580700 {1720580700 5} 1720581900 {1720581900 4} 1720583100 {1720583100 1000} 1720584120 {1720584120 10} 1720584180 {1720584180 5} 1720584240 {1720584240 233}} hour {1720497600 {1720497600 20} 1720566000 {1720566000 0} 1720569600 {1720569600 50} 1720573200 {1720573200 1} 1720576800 {1720576800 7} 1720580400 {1720580400 336} 1720584000 {1720584000 195}}}
 

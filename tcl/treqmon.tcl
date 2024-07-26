@@ -21,6 +21,12 @@ namespace eval ::treqmon {
         }
     }
 
+    array set last_seconds_by_interval {
+        second 60
+        minute 3600
+        hour   86400
+        day    86400
+    }
 }
 
 proc ::treqmon::init { {config {}} } {
@@ -82,6 +88,35 @@ proc ::treqmon::filter_body { d } {
     return $d
 }
 
+proc ::treqmon::filter_events {events now_in_seconds {from_seconds ""} {to_seconds ""}} {
+
+    if { $from_seconds ne {} && ![string is integer -strict $from_seconds] } {
+        error "from_seconds must be an integer"
+    } elseif { $from_seconds ne {} && $from_seconds < 0 } {
+        set from_seconds [expr { $now_in_seconds + $from_seconds }]
+    }
+
+    if { $to_seconds ne {} && ![string is integer -strict $to_seconds] } {
+        error "to_seconds must be an integer"
+    } elseif { $to_seconds ne {} && $to_seconds < 0 } {
+        set to_seconds [expr { $now_in_seconds + $to_seconds }]
+    }
+
+    set result [list]
+    foreach ev $events {
+        lassign $ev timestamp duration
+        if { $from_seconds ne {} && $timestamp < $from_seconds } {
+            continue
+        }
+        if { $to_seconds ne {} && $timestamp > $to_seconds } {
+            continue
+        }
+        lappend result $ev
+    }
+    return $result
+
+}
+
 # Get the history of events
 # The function takes two optional arguments: from_seconds and to_seconds.
 # If the arguments are not specified, the function returns all events.
@@ -112,34 +147,18 @@ proc ::treqmon::filter_body { d } {
 #     #     { 500 5 }
 #     #     { 600 6 }
 #
-proc ::treqmon::get_history_events { {from_seconds ""} {to_seconds ""} } {
+proc ::treqmon::get_history_events {{now_in_seconds ""} {from_seconds ""} {to_seconds ""} } {
 
-    if { $from_seconds ne {} && ![string is integer -strict $from_seconds] } {
-        error "from_seconds must be an integer"
-    }
-
-    if { $to_seconds ne {} && ![string is integer -strict $to_seconds] } {
-        error "to_seconds must be an integer"
+    if { $now_in_seconds eq {} } {
+        set now_in_seconds [clock seconds]
     }
 
     if { ![tsv::get ::treqmon::worker::history events history_events] } {
         error "Failed to retrieve events"
     }
 
-    set history_events [lsort -integer -index 0 $history_events]
-
-    set result [list]
-    foreach ev $history_events {
-        lassign $ev timestamp duration
-        if { $from_seconds ne {} && $timestamp < $from_seconds } {
-            continue
-        }
-        if { $to_seconds ne {} && $timestamp > $to_seconds } {
-            continue
-        }
-        lappend result $ev
-    }
-    return $result
+    set events [lsort -integer -index 0 $history_events]
+    return [filter_events $events $now_in_seconds $from_seconds $to_seconds]
 }
 
 # Split events by interval
@@ -216,10 +235,17 @@ proc ::treqmon::split_by_interval { events interval } {
 #     #     second { { 200 1 } { 300 1 } { 400 1 } { 500 1 } }
 #     #     minute { { 200 2 } { 400 2 } }
 #
-proc ::treqmon::get_page_views { events {intervals "second minute hour"} } {
+proc ::treqmon::get_page_views { events {now_in_seconds ""} {intervals "second minute hour"} } {
+    variable last_seconds_by_interval
+
+    if { $now_in_seconds eq {} } {
+        set now_in_seconds [clock seconds]
+    }
+
     set result [list]
     foreach interval $intervals {
-        set events_by_interval [::treqmon::split_by_interval $events $interval]
+        set filtered_events [filter_events $events $now_in_seconds "-$last_seconds_by_interval($interval)"]
+        set events_by_interval [::treqmon::split_by_interval $filtered_events $interval]
         lappend result $interval [dict map { k v } $events_by_interval {
             list $k [llength $v]
         }]
@@ -249,10 +275,17 @@ proc ::treqmon::get_page_views { events {intervals "second minute hour"} } {
 #     #     second { { 200 2 } { 300 3 } { 400 4 } { 500 5 } }
 #     #     minute { { 200 2 } { 400 5.5 } }
 #
-proc ::treqmon::get_response_times { events {intervals "second minute hour"} } {
+proc ::treqmon::get_response_times { events {now_in_seconds ""} {intervals "second minute hour"} } {
+    variable last_seconds_by_interval
+
+    if { $now_in_seconds eq {} } {
+        set now_in_seconds [clock seconds]
+    }
+
     set result [list]
     foreach interval $intervals {
-        set events_by_interval [::treqmon::split_by_interval $events $interval]
+        set filtered_events [filter_events $events $now_in_seconds "-$last_seconds_by_interval($interval)"]
+        set events_by_interval [::treqmon::split_by_interval $filtered_events $interval]
         lappend result $interval [dict map { k v } $events_by_interval {
             set sum 0
             foreach ev $v {

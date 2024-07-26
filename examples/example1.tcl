@@ -45,8 +45,7 @@ set init_script {
                       -average_day \
                       [clock seconds]]
 
-        set since_seconds [expr {[clock seconds] - 3600}]
-        set events [::treqmon::get_history_events $since_seconds]
+        set events [::treqmon::get_history_events]
         set page_view_stats [::treqmon::get_page_views $events]
         set response_time_stats [::treqmon::get_response_times $events]
         set data [dict merge $req [list stats $stats page_view_stats $page_view_stats response_time_stats $response_time_stats]]
