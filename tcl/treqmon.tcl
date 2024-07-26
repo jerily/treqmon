@@ -27,6 +27,14 @@ namespace eval ::treqmon {
         hour   86400
         day    86400
     }
+
+    array set seconds_by_interval {
+        second 1
+        minute 60
+        hour   3600
+        day    86400
+    }
+
 }
 
 proc ::treqmon::init { {config {}} } {
@@ -183,20 +191,15 @@ proc ::treqmon::get_history_events {{now_in_seconds ""} {from_seconds ""} {to_se
 #     #     300 { { 300 3 } { 400 4 } }
 #     #     600 { { 500 5 } { 600 6 } }
 #
-proc ::treqmon::split_by_interval { events interval } {
+proc ::treqmon::split_by_interval { events interval} {
 
     if { $interval ni {second minute hour day} } {
         return -code error "unknown interval \"$interval\", should be second, minute, hour or day"
     }
 
-    array set intervals {
-        second 1
-        minute 60
-        hour   3600
-        day    86400
-    }
+    variable seconds_by_interval
 
-    set interval_seconds $intervals($interval)
+    set interval_seconds $seconds_by_interval($interval)
 
     set result [dict create]
     foreach ev $events {
@@ -215,29 +218,15 @@ proc ::treqmon::split_by_interval { events interval } {
 }
 
 # Get the number of page views for all given intervals
-# The function takes three optional arguments: from_seconds, to_seconds, and intervals.
-# If the arguments are not specified, the function returns the number of page views
+# The function takes three arguments: events, now_in_seconds and intervals (optional)
+# If the intervals are not specified, the function returns the number of page views
 # for all intervals (second, minute, hour).
-# If the arguments are specified, the function returns the number of page views
+# If the intervals are specified, the function returns the number of page views
 # for the specified intervals.
-#
-# Example:
-#     set events {
-#         { 100 1 }
-#         { 200 2 }
-#         { 300 3 }
-#         { 400 4 }
-#         { 500 5 }
-#         { 600 6 }
-#     }
-#     set events [get_history_events 200 500]
-#     set result [get_page_views $events {second minute}]
-#     # The result will be:
-#     #     second { { 200 1 } { 300 1 } { 400 1 } { 500 1 } }
-#     #     minute { { 200 2 } { 400 2 } }
 #
 proc ::treqmon::get_page_views { events {now_in_seconds ""} {intervals "second minute hour"} } {
     variable last_seconds_by_interval
+    variable seconds_by_interval
 
     if { $now_in_seconds eq {} } {
         set now_in_seconds [clock seconds]
@@ -246,10 +235,13 @@ proc ::treqmon::get_page_views { events {now_in_seconds ""} {intervals "second m
     set result [list]
     foreach interval $intervals {
         set filtered_events [filter_events $events $now_in_seconds "-$last_seconds_by_interval($interval)"]
+        set xmax [expr { $now_in_seconds - ($now_in_seconds % $seconds_by_interval($interval)) + $seconds_by_interval($interval) }]
+        set xmin [expr { $xmax - $last_seconds_by_interval($interval) }]
+        set xrange [list $xmin $xmax]
         set events_by_interval [::treqmon::split_by_interval $filtered_events $interval]
-        lappend result $interval [dict map { k v } $events_by_interval {
+        lappend result $interval [list xrange $xrange page_views [dict map { k v } $events_by_interval {
             list $k [llength $v]
-        }]
+        }]]
     }
     return $result
 }

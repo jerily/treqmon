@@ -50,22 +50,22 @@ set init_script {
         set page_view_stats [::treqmon::get_page_views $events]
         set response_time_stats [::treqmon::get_response_times $events]
 
-        set minute_stats [dict get $page_view_stats minute]
+        set minute_stats_dict [dict get $page_view_stats minute]
+        set minute_stats [dict get $minute_stats_dict page_views]
+        set minute_xrange [dict get $minute_stats_dict xrange]
+
         set page_view_stats_minute_labels [dict keys $minute_stats]
 
-        set now_in_seconds [clock seconds]
-        set max_label [lindex $page_view_stats_minute_labels end]
-        if { $max_label eq {} } {
-            set max_label [clock seconds]
-        }
-        set min_label [expr { $max_label - 3600 }]
+        lassign $minute_xrange xmin xmax
+        set max_label $xmax
+        set min_label $xmin
 
         # create all labels from min to max by adding 60 seconds to each
-        set page_view_stats_minute_labels [list $min_label]
+        set page_view_stats_minute_labels [list]
         set current_label $min_label
-        while { $current_label < $max_label } {
+        while { $current_label <= $max_label } {
+            lappend page_view_stats_minute_labels [list $current_label]
             set current_label [expr {$current_label + 60}]
-            lappend page_view_stats_minute_labels $current_label
         }
 
         # now fill with zeros the missing values
@@ -79,10 +79,8 @@ set init_script {
             }
         }
 
-        puts page_view_stats_minute_data=$page_view_stats_minute_data
-
         # insert S before each element in the labels list
-        set page_view_stats_minute_labels_typed [lmap x $page_view_stats_minute_labels {list S [lindex $x 0]}]
+        set page_view_stats_minute_labels_typed [lmap x $page_view_stats_minute_labels {list S [clock format $x]}]
 
         # insert N before each element in the data list
         set page_view_stats_minute_data_typed [lmap x $page_view_stats_minute_data {list N $x}]
