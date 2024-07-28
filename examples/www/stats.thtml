@@ -1,6 +1,12 @@
 <html>
     <head>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <style>
+            .chart-view {
+                max-width: 800px;
+                margin: 0 auto;
+            }
+        </style>
     </head>
     <body>
         <h3>Stats</h3>
@@ -9,7 +15,7 @@
         <tpl foreach="k v" in="${page_view_stats}">
             <pre>${k}: ${v}</pre>
         </tpl>
-        <div id="page_views_per_minute_chart">
+        <div id="page_views_per_minute_chart" class="chart-view">
             <canvas id="page_views_per_minute_chart_canvas"></canvas>
         </div>
         <h3>Average Response Times</h3>

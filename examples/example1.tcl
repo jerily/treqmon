@@ -80,7 +80,7 @@ set init_script {
         }
 
         # insert S before each element in the labels list
-        set page_view_stats_minute_labels_typed [lmap x $page_view_stats_minute_labels {list S [clock format $x]}]
+        set page_view_stats_minute_labels_typed [lmap x $page_view_stats_minute_labels {list S [clock format $x -format "%H:%M"]}]
 
         # insert N before each element in the data list
         set page_view_stats_minute_data_typed [lmap x $page_view_stats_minute_data {list N $x}]
@@ -91,6 +91,9 @@ set init_script {
             backgroundColor {S "rgba(255, 99, 132, 0.2)"} \
             borderColor {S "rgba(255, 99, 132, 1)"} \
             borderWidth {N 1} \
+            fill {BOOL 1} \
+            cubicInterpolationMode {S "monotone"} \
+            tension {N 0.4} \
         ]]
 
         set data_typed [list M [list \
@@ -98,10 +101,17 @@ set init_script {
            datasets [list L [list $dataset_typed]] \
        ]]
 
+        set options_typed {M {
+            scales {M {
+                x {M {title {M {display {BOOL 1} text {S "Minute"}}}}}
+                y {M {title {M {display {BOOL 1} text {S "Views"}}} beginAtZero {BOOL 1}}}
+            }}
+        }}
+
         ::tjson::create [list M [list \
             type {S line} \
             data $data_typed \
-            options {M {scales {M {y {M {beginAtZero {BOOL 1}}}}}}}]] \
+            options $options_typed]] \
             chart_config_node
 
         set data [dict merge $req \
