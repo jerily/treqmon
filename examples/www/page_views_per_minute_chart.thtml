@@ -1,0 +1,16 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .chart-view {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+</style>
+
+<div id="page_views_per_minute_chart" class="chart-view">
+    <canvas id="page_views_per_minute_chart_canvas"></canvas>
+</div>
+
+<script>
+    var ctx = document.getElementById('page_views_per_minute_chart_canvas').getContext('2d');
+    var page_views_per_minute_chart = new Chart(ctx, $chart_config);
+</script>
