@@ -270,6 +270,7 @@ proc ::treqmon::get_page_views { events {now_in_seconds ""} {intervals "second m
 #
 proc ::treqmon::get_response_times { events {now_in_seconds ""} {intervals "second minute hour"} } {
     variable last_seconds_by_interval
+    variable seconds_by_interval
 
     if { $now_in_seconds eq {} } {
         set now_in_seconds [clock seconds]
@@ -278,8 +279,11 @@ proc ::treqmon::get_response_times { events {now_in_seconds ""} {intervals "seco
     set result [list]
     foreach interval $intervals {
         set filtered_events [filter_events $events $now_in_seconds "-$last_seconds_by_interval($interval)"]
+        set xmax [expr { $now_in_seconds - ($now_in_seconds % $seconds_by_interval($interval)) + $seconds_by_interval($interval) }]
+        set xmin [expr { $xmax - $last_seconds_by_interval($interval) }]
+        set xrange [list $xmin $xmax]
         set events_by_interval [::treqmon::split_by_interval $filtered_events $interval]
-        lappend result $interval [dict map { k v } $events_by_interval {
+        lappend result $interval [list xrange $xrange response_times [dict map { k v } $events_by_interval {
             set sum 0
             foreach ev $v {
                 lassign $ev timestamp duration
@@ -290,7 +294,7 @@ proc ::treqmon::get_response_times { events {now_in_seconds ""} {intervals "seco
                 incr sum $duration
             }
             list $k [expr { $sum / [llength $v] }]
-        }]
+        }]]
     }
     return $result
 }

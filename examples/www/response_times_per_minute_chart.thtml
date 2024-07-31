@@ -1,0 +1,20 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .chart-view {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+</style>
+
+<tpl foreach="k v" in="${minute_stats_dict}">
+    <pre>${k}: ${v}</pre>
+</tpl>
+
+<div id="response_times_per_minute_chart" class="chart-view">
+    <canvas id="response_times_per_minute_chart_canvas"></canvas>
+</div>
+
+<script>
+    var ctx = document.getElementById('response_times_per_minute_chart_canvas').getContext('2d');
+    var response_times_per_minute_chart = new Chart(ctx, $chart_config);
+</script>

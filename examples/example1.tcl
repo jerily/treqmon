@@ -48,7 +48,6 @@ set init_script {
 
         set events [::treqmon::get_history_events]
         set page_view_stats [::treqmon::get_page_views $events]
-
         set response_time_stats [::treqmon::get_response_times $events]
 
         set data [dict merge $req \
