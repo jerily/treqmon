@@ -1,4 +1,6 @@
+<import name="PageViewsPerSecondChart" src="page_views_per_second_chart.thtml" />
 <import name="PageViewsPerMinuteChart" src="page_views_per_minute_chart.thtml" />
+<import name="PageViewsPerHourChart" src="page_views_per_hour_chart.thtml" />
 
 <html>
     <head>
@@ -7,10 +9,15 @@
         <h3>Stats</h3>
         <pre>${stats}</pre>
         <h3>Page View Statistics</h3>
-        <tpl foreach="k v" in="${page_view_stats}">
-            <pre>${k}: ${v}</pre>
-        </tpl>
-        <PageViewsPerMinuteChart events="${events}" />
+        <div>
+            <PageViewsPerSecondChart page_view_stats="${page_view_stats}" />
+        </div>
+        <div>
+            <PageViewsPerMinuteChart page_view_stats="${page_view_stats}" />
+        </div>
+        <div>
+            <PageViewsPerHourChart page_view_stats="${page_view_stats}" />
+        </div>
         <h3>Average Response Times</h3>
         <tpl foreach="k v" in="${response_time_stats}">
             <pre>${k}: ${v}</pre>

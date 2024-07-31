@@ -1,13 +1,8 @@
-# proc page_views_per_minute_chart { __data__ }
-
-set page_view_stats [::treqmon::get_page_views $events]
-set response_time_stats [::treqmon::get_response_times $events]
+set page_view_stats [dict get $__data__ page_view_stats]
 
 set minute_stats_dict [dict get $page_view_stats minute]
 set minute_stats [dict get $minute_stats_dict page_views]
 set minute_xrange [dict get $minute_stats_dict xrange]
-
-set page_view_stats_minute_labels [dict keys $minute_stats]
 
 lassign $minute_xrange xmin xmax
 set max_label $xmax
@@ -69,4 +64,5 @@ set options_typed {M {
 
 set chart_config_json [::tjson::to_json $chart_config_node]
 
-::thtml::rendertemplate [dict merge $__data__ [list chart_config $chart_config_json]]
+# ::thtml::rendertemplate [dict merge $__data__ [list chart_config $chart_config_json]]
+return [dict merge $__data__ [list chart_config $chart_config_json minute_stats_dict $minute_stats_dict]]

@@ -6,6 +6,10 @@
     }
 </style>
 
+<tpl foreach="k v" in="${minute_stats_dict}">
+    <pre>${k}: ${v}</pre>
+</tpl>
+
 <div id="page_views_per_minute_chart" class="chart-view">
     <canvas id="page_views_per_minute_chart_canvas"></canvas>
 </div>

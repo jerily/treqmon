@@ -47,12 +47,14 @@ set init_script {
                       [clock seconds]]
 
         set events [::treqmon::get_history_events]
+        set page_view_stats [::treqmon::get_page_views $events]
+
+        set response_time_stats [::treqmon::get_response_times $events]
 
         set data [dict merge $req \
             [list \
                 stats $stats \
                 page_view_stats $page_view_stats \
-                chart_config [::tjson::to_json $chart_config_node] \
                 response_time_stats $response_time_stats]]
 
         set html [::thtml::renderfile stats.thtml $data]
