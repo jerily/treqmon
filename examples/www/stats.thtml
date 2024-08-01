@@ -1,9 +1,9 @@
-<import name="PageViewsPerSecondChart" src="page_views_per_second_chart.thtml" />
-<import name="PageViewsPerMinuteChart" src="page_views_per_minute_chart.thtml" />
-<import name="PageViewsPerHourChart" src="page_views_per_hour_chart.thtml" />
-<import name="ResponseTimesPerSecondChart" src="response_times_per_second_chart.thtml" />
-<import name="ResponseTimesPerMinuteChart" src="response_times_per_minute_chart.thtml" />
-<import name="ResponseTimesPerHourChart" src="response_times_per_hour_chart.thtml" />
+<import name="PageViewsPerSecondChart" src="@treqmon/page_views_per_second_chart.thtml" />
+<import name="PageViewsPerMinuteChart" src="@treqmon/page_views_per_minute_chart.thtml" />
+<import name="PageViewsPerHourChart" src="@treqmon/page_views_per_hour_chart.thtml" />
+<import name="ResponseTimesPerSecondChart" src="@treqmon/response_times_per_second_chart.thtml" />
+<import name="ResponseTimesPerMinuteChart" src="@treqmon/response_times_per_minute_chart.thtml" />
+<import name="ResponseTimesPerHourChart" src="@treqmon/response_times_per_hour_chart.thtml" />
 
 <html>
     <head>
