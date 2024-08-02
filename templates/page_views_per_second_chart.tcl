@@ -1,8 +1,15 @@
 set page_view_stats [dict get $__data__ page_view_stats]
 
 set second_stats_dict [dict get $page_view_stats second]
-set second_stats [dict get $second_stats_dict page_views]
 set second_xrange [dict get $second_stats_dict xrange]
+set second_stats [dict get $second_stats_dict page_views]
+
+set top_k [dict get $second_stats_dict top_k]
+set second_top_k_views [list]
+foreach pair [dict get $second_stats_dict top_k_views] {
+    lassign $pair t v
+    lappend second_top_k_views [clock format $t] $v
+}
 
 lassign $second_xrange xmin xmax
 set max_label $xmax
@@ -64,5 +71,8 @@ set options_typed {M {
 
 set chart_config_json [::tjson::to_json $chart_config_node]
 
-# ::thtml::rendertemplate [dict merge $__data__ [list chart_config $chart_config_json]]
-return [dict merge $__data__ [list chart_config $chart_config_json second_stats_dict $second_stats_dict]]
+return [dict merge $__data__ [list \
+    chart_config $chart_config_json \
+    second_stats_dict $second_stats_dict \
+    top_k $top_k \
+    second_top_k_views $second_top_k_views]]

@@ -217,6 +217,13 @@ proc ::treqmon::split_by_interval { events interval} {
     return $result
 }
 
+
+proc ::treqmon::max_k_page_views {top_k events} {
+    set sorted_events [lsort -integer -stride 2 -index {1 1} -decreasing $events]
+    set values [lmap {k v} $sorted_events { set v }]
+    return [lrange $values 0 [expr { $top_k - 1}]]
+}
+
 # Get the number of page views for all given intervals
 # The function takes three arguments: events, now_in_seconds and intervals (optional)
 # If the intervals are not specified, the function returns the number of page views
@@ -224,7 +231,7 @@ proc ::treqmon::split_by_interval { events interval} {
 # If the intervals are specified, the function returns the number of page views
 # for the specified intervals.
 #
-proc ::treqmon::get_page_views { events {now_in_seconds ""} {intervals "second minute hour"} } {
+proc ::treqmon::get_page_views { events {now_in_seconds ""} {intervals "second minute hour"} {top_k "5"}} {
     variable last_seconds_by_interval
     variable seconds_by_interval
 
@@ -239,11 +246,33 @@ proc ::treqmon::get_page_views { events {now_in_seconds ""} {intervals "second m
         set xmin [expr { $xmax - $last_seconds_by_interval($interval) }]
         set xrange [list $xmin $xmax]
         set events_by_interval [::treqmon::split_by_interval $filtered_events $interval]
-        lappend result $interval [list xrange $xrange page_views [dict map { k v } $events_by_interval {
-            list $k [llength $v]
-        }]]
+        set page_views [dict map { k v } $events_by_interval {list $k [llength $v]}]
+        lappend result $interval [list \
+            xrange $xrange \
+            page_views $page_views \
+            top_k $top_k \
+            top_k_views [max_k_page_views $top_k $page_views]]
     }
     return $result
+}
+
+proc ::treqmon::avg_response_time {events} {
+    set sum 0
+    foreach ev $events {
+        lassign $ev timestamp duration
+        if { ![string is integer -strict $duration] } {
+            puts "duration must be an integer: $duration"
+            continue
+        }
+        incr sum $duration
+    }
+    return [expr { $sum / [llength $events] }]
+}
+
+proc ::treqmon::max_k_response_times {top_k events} {
+    set sorted_events [lsort -integer -stride 2 -index {1 1} -decreasing $events]
+    set values [lmap {k v} $sorted_events { set v }]
+    return [lrange $values 0 [expr { $top_k - 1}]]
 }
 
 # Get the average response time for all given intervals
@@ -268,7 +297,7 @@ proc ::treqmon::get_page_views { events {now_in_seconds ""} {intervals "second m
 #     #     second { { 200 2 } { 300 3 } { 400 4 } { 500 5 } }
 #     #     minute { { 200 2 } { 400 5.5 } }
 #
-proc ::treqmon::get_response_times { events {now_in_seconds ""} {intervals "second minute hour"} } {
+proc ::treqmon::get_response_times {events {now_in_seconds ""} {intervals "second minute hour"} {top_k "5"}} {
     variable last_seconds_by_interval
     variable seconds_by_interval
 
@@ -283,18 +312,12 @@ proc ::treqmon::get_response_times { events {now_in_seconds ""} {intervals "seco
         set xmin [expr { $xmax - $last_seconds_by_interval($interval) }]
         set xrange [list $xmin $xmax]
         set events_by_interval [::treqmon::split_by_interval $filtered_events $interval]
-        lappend result $interval [list xrange $xrange response_times [dict map { k v } $events_by_interval {
-            set sum 0
-            foreach ev $v {
-                lassign $ev timestamp duration
-                if { ![string is integer -strict $duration] } {
-                    puts "duration must be an integer: $duration"
-                    continue
-                }
-                incr sum $duration
-            }
-            list $k [expr { $sum / [llength $v] }]
-        }]]
+        set response_times [dict map { k v } $events_by_interval { list $k [avg_response_time $v] }]
+        lappend result $interval [list \
+            xrange $xrange \
+            response_times $response_times \
+            top_k $top_k \
+            top_k_times [max_k_response_times $top_k $response_times]]
     }
     return $result
 }

@@ -4,11 +4,18 @@ set hour_stats_dict [dict get $response_time_stats hour]
 set hour_stats [dict get $hour_stats_dict response_times]
 set hour_xrange [dict get $hour_stats_dict xrange]
 
+set top_k [dict get $hour_stats_dict top_k]
+set hour_top_k_times [list]
+foreach pair [dict get $hour_stats_dict top_k_times] {
+    lassign $pair t v
+    lappend hour_top_k_times [clock format $t] $v
+}
+
 lassign $hour_xrange xmin xmax
 set max_label $xmax
 set min_label $xmin
 
-# create all labels from min to max by adding 60 hours to each
+# create all labels from min to max by adding 3600 seconds to each
 set page_view_stats_hour_labels [list]
 set current_label $min_label
 while { $current_label <= $max_label } {
@@ -34,7 +41,7 @@ set page_view_stats_hour_labels_typed [lmap x $page_view_stats_hour_labels {list
 set page_view_stats_hour_data_typed [lmap x $page_view_stats_hour_data {list N $x}]
 
 set dataset_typed [list M [list \
-    label {S "Average Response Times per Hour"} \
+    label {S "Average Response Time per Hour"} \
     data [list L $page_view_stats_hour_data_typed] \
     backgroundColor {S "rgba(255, 99, 132, 0.2)"} \
     borderColor {S "rgba(255, 99, 132, 1)"} \
@@ -52,7 +59,7 @@ set data_typed [list M [list \
 set options_typed {M {
     scales {M {
         x {M {title {M {display {BOOL 1} text {S "Hour"}}}}}
-        y {M {title {M {display {BOOL 1} text {S "Avg Response Time (in milliseconds)"}}} beginAtZero {BOOL 1}}}
+        y {M {title {M {display {BOOL 1} text {S "Avg Response Time (in millihours)"}}} beginAtZero {BOOL 1}}}
     }}
 }}
 
@@ -64,5 +71,8 @@ set options_typed {M {
 
 set chart_config_json [::tjson::to_json $chart_config_node]
 
-# ::thtml::rendertemplate [dict merge $__data__ [list chart_config $chart_config_json]]
-return [dict merge $__data__ [list chart_config $chart_config_json hour_stats_dict $hour_stats_dict]]
+return [dict merge $__data__ [list \
+    chart_config $chart_config_json \
+    hour_stats_dict $hour_stats_dict \
+    top_k $top_k \
+    hour_top_k_times $hour_top_k_times]]

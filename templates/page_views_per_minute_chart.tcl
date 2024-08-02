@@ -4,6 +4,13 @@ set minute_stats_dict [dict get $page_view_stats minute]
 set minute_stats [dict get $minute_stats_dict page_views]
 set minute_xrange [dict get $minute_stats_dict xrange]
 
+set top_k [dict get $minute_stats_dict top_k]
+set minute_top_k_views [list]
+foreach pair [dict get $minute_stats_dict top_k_views] {
+    lassign $pair t v
+    lappend minute_top_k_views [clock format $t] $v
+}
+
 lassign $minute_xrange xmin xmax
 set max_label $xmax
 set min_label $xmin
@@ -65,4 +72,8 @@ set options_typed {M {
 set chart_config_json [::tjson::to_json $chart_config_node]
 
 # ::thtml::rendertemplate [dict merge $__data__ [list chart_config $chart_config_json]]
-return [dict merge $__data__ [list chart_config $chart_config_json minute_stats_dict $minute_stats_dict]]
+return [dict merge $__data__ [list \
+    chart_config $chart_config_json \
+    minute_stats_dict $minute_stats_dict \
+    top_k $top_k \
+    minute_top_k_views $minute_top_k_views]]

@@ -4,11 +4,18 @@ set hour_stats_dict [dict get $page_view_stats hour]
 set hour_stats [dict get $hour_stats_dict page_views]
 set hour_xrange [dict get $hour_stats_dict xrange]
 
+set top_k [dict get $hour_stats_dict top_k]
+set hour_top_k_views [list]
+foreach pair [dict get $hour_stats_dict top_k_views] {
+    lassign $pair t v
+    lappend hour_top_k_views [clock format $t] $v
+}
+
 lassign $hour_xrange xmin xmax
 set max_label $xmax
 set min_label $xmin
 
-# create all labels from min to max by adding 60 seconds to each
+# create all labels from min to max by adding 3600 seconds to each
 set page_view_stats_hour_labels [list]
 set current_label $min_label
 while { $current_label <= $max_label } {
@@ -64,5 +71,8 @@ set options_typed {M {
 
 set chart_config_json [::tjson::to_json $chart_config_node]
 
-# ::thtml::rendertemplate [dict merge $__data__ [list chart_config $chart_config_json]]
-return [dict merge $__data__ [list chart_config $chart_config_json hour_stats_dict $hour_stats_dict]]
+return [dict merge $__data__ [list \
+    chart_config $chart_config_json \
+    hour_stats_dict $hour_stats_dict \
+    top_k $top_k \
+    hour_top_k_views $hour_top_k_views]]

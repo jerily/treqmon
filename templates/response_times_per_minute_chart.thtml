@@ -1,8 +1,16 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
     .chart-view {
+        min-width: 600px;
+    }
+    .chart_and_topk {
         max-width: 800px;
+        display: flex;
+        flex: 0 0;
         margin: 0 auto;
+    }
+    .topk-view {
+        font-size: 0.6em;
     }
 </style>
 
@@ -10,8 +18,16 @@
     <pre>${k}: ${v}</pre>
 </tpl>
 
-<div id="response_times_per_minute_chart" class="chart-view">
-    <canvas id="response_times_per_minute_chart_canvas"></canvas>
+<div class="chart_and_topk">
+    <div id="response_times_per_minute_chart" class="chart-view">
+        <canvas id="response_times_per_minute_chart_canvas"></canvas>
+    </div>
+    <div class="topk-view">
+        <h3>Max</h3>
+        <tpl foreach="t v" in="${minute_top_k_times}">
+            <div>${t}: ${v}</div>
+        </tpl>
+    </div>
 </div>
 
 <script>
