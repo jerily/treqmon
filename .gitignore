@@ -5,6 +5,7 @@ models
 *.o
 *.so
 node_modules
+cache
 /ttrek-venv
 /ttrek.json
 /ttrek-lock.json

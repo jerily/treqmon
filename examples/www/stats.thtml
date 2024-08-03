@@ -7,7 +7,7 @@
 
 <html>
     <head>
-        @bundle_js@
+        <bundle url_prefix="$bundle_url_prefix" />
     </head>
     <body>
         <h3>Stats</h3>

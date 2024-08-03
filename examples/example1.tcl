@@ -20,7 +20,7 @@ set init_script {
         cache 0 \
         target_lang tcl \
         rootdir [::twebserver::get_rootdir] \
-        cachedir "/tmp/cache/thtml/"]
+        bundle_outdir [file join [::twebserver::get_rootdir] public js]]
 
     ::twebserver::create_router router
 
@@ -29,10 +29,50 @@ set init_script {
         -leave_proc ::treqmon::leave \
         $router
 
+    ::twebserver::add_route -prefix $router GET /(css|js|assets)/ get_css_or_js_or_assets_handler
     ::twebserver::add_route $router GET "/stats" get_stats_handler
     ::twebserver::add_route $router GET "*" get_catchall_handler
 
     interp alias {} process_conn {} $router
+
+
+    proc path_join {args} {
+        set rootdir [file normalize [::twebserver::get_rootdir]]
+        set path ""
+        foreach arg $args {
+            set parts [file split $arg]
+            foreach part $parts {
+                if { $part eq {..} } {
+                    error "path_join: path \"$arg\" contains \"..\""
+                }
+                append path "/" $part
+            }
+        }
+        set normalized_path [file normalize $path]
+        if { [string range $normalized_path 0 [expr { [string length $rootdir] - 1}]] ne $rootdir } {
+            error "path_join: path \"$normalized_path\" is not under rootdir \"$rootdir\""
+        }
+        return $normalized_path
+    }
+
+    proc get_css_or_js_or_assets_handler {ctx req} {
+        set path [dict get $req path]
+        set dir [file normalize [::thtml::get_rootdir]]
+        set filepath [path_join $dir public $path]
+    #    puts filepath=$filepath
+        set ext [file extension $filepath]
+        if { $ext eq {.css} } {
+            set mimetype text/css
+        } elseif { $ext eq {.js} } {
+            set mimetype application/javascript
+        } elseif { $ext eq {.svg} } {
+            set mimetype image/svg+xml
+        } else {
+            error "get_css_or_js_handler: unsupported extension \"$ext\""
+        }
+        set res [::twebserver::build_response -return_file 200 $mimetype $filepath]
+        return $res
+    }
 
     proc get_stats_handler {ctx req} {
         set stats [::treqmon::statistics \
@@ -52,6 +92,7 @@ set init_script {
 
         set data [dict merge $req \
             [list \
+                bundle_url_prefix /js/ \
                 stats $stats \
                 page_view_stats $page_view_stats \
                 response_time_stats $response_time_stats]]
