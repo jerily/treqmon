@@ -57,7 +57,7 @@ set init_script {
                 response_time_stats $response_time_stats]]
 
         set html [::thtml::renderfile stats.thtml $data]
-        set res [::twebserver::build_response 200 text/html $html]
+        set res [::twebserver::build_response 200 "text/html; charset=utf-8" $html]
         return $res
     }
 

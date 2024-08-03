@@ -7,6 +7,7 @@
 
 <html>
     <head>
+        @bundle_js@
     </head>
     <body>
         <h3>Stats</h3>

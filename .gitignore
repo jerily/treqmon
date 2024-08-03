@@ -4,6 +4,7 @@ build
 models
 *.o
 *.so
+node_modules
 /ttrek-venv
 /ttrek.json
 /ttrek-lock.json

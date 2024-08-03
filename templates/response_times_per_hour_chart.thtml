@@ -1,4 +1,4 @@
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<import_node_module name="Chart" src="chart.js/auto" />
 <style>
     .chart-view {
         min-width: 600px;
@@ -30,7 +30,7 @@
     </div>
 </div>
 
-<script>
+<js args="chart_config $chart_config">
     var ctx = document.getElementById('response_times_per_hour_chart_canvas').getContext('2d');
-    var response_times_per_hour_chart = new Chart(ctx, $chart_config);
-</script>
+    var response_times_per_hour_chart = new Chart(ctx, chart_config);
+</js>
