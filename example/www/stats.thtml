@@ -23,9 +23,11 @@
     <body>
         <div class="stats-container">
             <h3>Stats</h3>
-            <tpl foreach="k v" in="${stats}">
-                <div>${k}: ${v}</div>
-            </tpl>
+            <p>
+                <tpl foreach="k v" in="${stats}">
+                    <div>${k}: ${v}</div>
+                </tpl>
+            </p>
             <h3>Page View Statistics</h3>
             <p>
                 <PageViewsPerSecondChart page_view_stats="${page_view_stats}" />
