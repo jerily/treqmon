@@ -1,4 +1,6 @@
 <import_node_module name="Chart" src="chart.js/auto" />
+<import_node_module src="purecss/build/pure-min.css" />
+
 <style>
     .chart-view {
         min-width: 600px;
