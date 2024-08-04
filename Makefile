@@ -20,7 +20,9 @@ install:
 	mkdir -vp "$(INSTALL_DIR)"
 	cp -vf LICENSE pkgIndex.tcl "$(INSTALL_DIR)"
 	mkdir -vp "$(INSTALL_DIR)"/tcl
+	mkdir -vp "$(INSTALL_DIR)"/templates
 	cp -vfr tcl/* "$(INSTALL_DIR)"/tcl
+	cp -vfr templates/* "$(INSTALL_DIR)"/templates
 
 .PHONY: test
 test:

@@ -75,29 +75,8 @@ set init_script {
     }
 
     proc get_stats_handler {ctx req} {
-        set stats [::treqmon::statistics \
-                      -count_second \
-                      -count_minute \
-                      -count_hour \
-                      -count_day \
-                      -average_second \
-                      -average_minute \
-                      -average_hour \
-                      -average_day \
-                      [clock seconds]]
-
-        set events [::treqmon::get_history_events]
-        set page_view_stats [::treqmon::get_page_views $events]
-        set response_time_stats [::treqmon::get_response_times $events]
-
-        set data [dict merge $req \
-            [list \
-                bundle_url_prefix /js/ \
-                stats $stats \
-                page_view_stats $page_view_stats \
-                response_time_stats $response_time_stats]]
-
-        set html [::thtml::renderfile stats.thtml $data]
+        set data [dict merge $req [list bundle_url_prefix "/js/"]]
+        set html [::thtml::renderfile app.thtml $data]
         set res [::twebserver::build_response 200 "text/html; charset=utf-8" $html]
         return $res
     }
