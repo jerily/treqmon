@@ -1,0 +1,43 @@
+<import name="PageViewsPerSecondChart" src="/templates/page_views_per_second_chart.thtml" />
+<import name="PageViewsPerMinuteChart" src="/templates/page_views_per_minute_chart.thtml" />
+<import name="PageViewsPerHourChart" src="/templates/page_views_per_hour_chart.thtml" />
+<import name="ResponseTimesPerSecondChart" src="/templates/response_times_per_second_chart.thtml" />
+<import name="ResponseTimesPerMinuteChart" src="/templates/response_times_per_minute_chart.thtml" />
+<import name="ResponseTimesPerHourChart" src="/templates/response_times_per_hour_chart.thtml" />
+
+<style>
+    .chart_and_max {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+</style>
+
+<html>
+    <head>
+        <bundle url_prefix="$bundle_url_prefix" />
+    </head>
+    <body>
+        <h3>Stats</h3>
+        <pre>${stats}</pre>
+        <h3>Page View Statistics</h3>
+        <div class="chart_and_max">
+            <PageViewsPerSecondChart page_view_stats="${page_view_stats}" />
+        </div>
+        <div class="chart_and_max">
+            <PageViewsPerMinuteChart page_view_stats="${page_view_stats}" />
+        </div>
+        <div class="chart_and_max">
+            <PageViewsPerHourChart page_view_stats="${page_view_stats}" />
+        </div>
+        <h3>Average Response Times</h3>
+        <div class="chart_and_max">
+            <ResponseTimesPerSecondChart response_time_stats="${response_time_stats}" />
+        </div>
+        <div class="chart_and_max">
+            <ResponseTimesPerMinuteChart response_time_stats="${response_time_stats}" />
+        </div>
+        <div class="chart_and_max">
+            <ResponseTimesPerHourChart response_time_stats="${response_time_stats}" />
+        </div>
+    </body>
+</html>
