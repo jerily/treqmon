@@ -2,21 +2,15 @@
 <import_node_module src="purecss/build/base-min.css" />
 <import_node_module src="purecss/build/grids-min.css" />
 
-<tpl foreach="k v" in="${hour_stats_dict}">
-    <pre>${k}: ${v}</pre>
-</tpl>
-
 <div class="pure-g">
     <div class="pure-u-3-5">
         <canvas id="page_views_per_hour_chart_canvas"></canvas>
     </div>
     <div class="pure-u-2-5">
-        <h4>Max</h4>
-        <div class="x-small">
-            <tpl foreach="t v" in="${hour_top_k_views}">
-                <div>${t}: ${v}</div>
-            </tpl>
-        </div>
+        <small>Max</small>
+        <tpl foreach="t v" in="${hour_top_k_views}">
+            <div><small><small>${t}: ${v}</small></small></div>
+        </tpl>
     </div>
 </div>
 

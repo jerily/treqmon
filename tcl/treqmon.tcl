@@ -241,17 +241,23 @@ proc ::treqmon::get_page_views { events {now_in_seconds ""} {intervals "second m
 
     set result [list]
     foreach interval $intervals {
-        set filtered_events [filter_events $events $now_in_seconds "-$last_seconds_by_interval($interval)"]
+
         set xmax [expr { $now_in_seconds - ($now_in_seconds % $seconds_by_interval($interval)) + $seconds_by_interval($interval) }]
         set xmin [expr { $xmax - $last_seconds_by_interval($interval) }]
         set xrange [list $xmin $xmax]
-        set events_by_interval [::treqmon::split_by_interval $filtered_events $interval]
-        set page_views [dict map { k v } $events_by_interval {list $k [llength $v]}]
+
+        set filtered_events [filter_events $events $now_in_seconds "-$last_seconds_by_interval($interval)"]
+        set filtered_events_by_interval [::treqmon::split_by_interval $filtered_events $interval]
+        set page_views_for_chart [dict map { k v } $filtered_events_by_interval {list $k [llength $v]}]
+
+        set events_by_interval [::treqmon::split_by_interval $events $interval]
+        set page_views_for_top_k [dict map { k v } $events_by_interval {list $k [llength $v]}]
+
         lappend result $interval [list \
             xrange $xrange \
-            page_views $page_views \
+            page_views $page_views_for_chart \
             top_k $top_k \
-            top_k_views [max_k_page_views $top_k $page_views]]
+            top_k_views [max_k_page_views $top_k $page_views_for_top_k]]
     }
     return $result
 }

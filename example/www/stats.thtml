@@ -7,11 +7,10 @@
 <import name="ResponseTimesPerHourChart" src="/templates/response_times_per_hour_chart.thtml" />
 
 <style>
-    .chart_and_max {
+    .stats-container {
+        min-width: 320px;
+        max-width: 1024px;
         margin: 0 auto;
-    }
-    .x-small {
-        font-size: 0.4713333333333333rem;
     }
 </style>
 
@@ -22,31 +21,31 @@
         <bundle url_prefix="$bundle_url_prefix" />
     </head>
     <body>
-        <div class="pure-g">
-            <div class="pure-u-4-5">
-                <h3>Stats</h3>
-                <pre>${stats}</pre>
-                <h3>Page View Statistics</h3>
-                <div class="chart_and_max">
-                    <PageViewsPerSecondChart page_view_stats="${page_view_stats}" />
-                </div>
-                <div class="chart_and_max">
-                    <PageViewsPerMinuteChart page_view_stats="${page_view_stats}" />
-                </div>
-                <div class="chart_and_max">
-                    <PageViewsPerHourChart page_view_stats="${page_view_stats}" />
-                </div>
-                <h3>Average Response Times</h3>
-                <div class="chart_and_max">
-                    <ResponseTimesPerSecondChart response_time_stats="${response_time_stats}" />
-                </div>
-                <div class="chart_and_max">
-                    <ResponseTimesPerMinuteChart response_time_stats="${response_time_stats}" />
-                </div>
-                <div class="chart_and_max">
-                    <ResponseTimesPerHourChart response_time_stats="${response_time_stats}" />
-                </div>
-            </div>
+        <div class="stats-container">
+            <h3>Stats</h3>
+            <tpl foreach="k v" in="${stats}">
+                <div>${k}: ${v}</div>
+            </tpl>
+            <h3>Page View Statistics</h3>
+            <p>
+                <PageViewsPerSecondChart page_view_stats="${page_view_stats}" />
+            </p>
+            <p>
+                <PageViewsPerMinuteChart page_view_stats="${page_view_stats}" />
+            </p>
+            <p>
+                <PageViewsPerHourChart page_view_stats="${page_view_stats}" />
+            </p>
+            <h3>Average Response Times</h3>
+            <p>
+                <ResponseTimesPerSecondChart response_time_stats="${response_time_stats}" />
+            </p>
+            <p>
+                <ResponseTimesPerMinuteChart response_time_stats="${response_time_stats}" />
+            </p>
+            <p>
+                <ResponseTimesPerHourChart response_time_stats="${response_time_stats}" />
+            </p>
         </div>
     </body>
 </html>
