@@ -1,0 +1,24 @@
+
+<p>
+    <div><small><strong>Current Avg Response Time (in ms)</strong></small></div>
+    <div>
+        <small>
+            <small>
+                <ul class="hug">
+                    <li>
+                        Last minute: ${summary.last_minute_avg_response_time}
+                    </li>
+                    <li>
+                        Last 30 minutes: ${summary.last_half_hour_avg_response_time}
+                    </li>
+                    <li>
+                        Last hour: ${summary.last_hour_avg_response_time}
+                    </li>
+                    <li>
+                        Last 24 hours: ${summary.last_day_avg_response_time}
+                    </li>
+                </ul>
+            </small>
+        </small>
+    </div>
+</p>

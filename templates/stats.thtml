@@ -1,4 +1,5 @@
 <import_node_module src="/www/typebase.css" />
+<import name="Summary" src="summary.thtml" />
 <import name="PageViewsPerSecondChart" src="page_views_per_second_chart.thtml" />
 <import name="PageViewsPerMinuteChart" src="page_views_per_minute_chart.thtml" />
 <import name="PageViewsPerHourChart" src="page_views_per_hour_chart.thtml" />
@@ -15,11 +16,9 @@
 </style>
 
 <div class="stats-container">
-    <h3>Stats</h3>
+    <h3>Summary</h3>
     <p>
-        <tpl foreach="k v" in="${stats}">
-            <div>${k}: ${v}</div>
-        </tpl>
+        <Summary summary="${summary}" />
     </p>
     <h3>Page View Statistics</h3>
     <p>

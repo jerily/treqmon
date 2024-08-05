@@ -272,7 +272,11 @@ proc ::treqmon::avg_response_time {events} {
         }
         incr sum $duration
     }
-    return [expr { $sum / [llength $events] }]
+    set len [llength $events]
+    if { $len == 0 } {
+        return 0
+    }
+    return [expr { $sum / $len }]
 }
 
 proc ::treqmon::max_k_response_times {top_k events} {
@@ -325,6 +329,30 @@ proc ::treqmon::get_response_times {events {now_in_seconds ""} {intervals "secon
             top_k $top_k \
             top_k_times [max_k_response_times $top_k $response_times]]
     }
+    return $result
+}
+
+proc ::treqmon::get_summary {events {now_in_seconds ""}} {
+
+    if { $now_in_seconds eq {} } {
+        set now_in_seconds [clock seconds]
+    }
+
+    set last_minute_events [filter_events $events $now_in_seconds "-60"]
+    set last_half_hour_events [filter_events $events $now_in_seconds "-[expr { 30 * 60 }]"]
+    set last_hour_events [filter_events $events $now_in_seconds "-3600"]
+    set last_day_events [filter_events $events $now_in_seconds "-86400"]
+
+    set last_minute_avg_response_time [avg_response_time $last_minute_events]
+    set last_half_hour_avg_response_time [avg_response_time $last_half_hour_events]
+    set last_hour_avg_response_time [avg_response_time $last_hour_events]
+    set last_day_avg_response_time [avg_response_time $last_day_events]
+
+    set result [list]
+    lappend result last_minute_avg_response_time $last_minute_avg_response_time
+    lappend result last_half_hour_avg_response_time $last_half_hour_avg_response_time
+    lappend result last_hour_avg_response_time $last_hour_avg_response_time
+    lappend result last_day_avg_response_time $last_day_avg_response_time
     return $result
 }
 
