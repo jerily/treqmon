@@ -13,7 +13,6 @@ set init_script {
     package require twebserver
     package require treqmon
     package require thtml
-    package require tjson
 
     ::thtml::init [dict create \
         debug 1 \
@@ -22,7 +21,7 @@ set init_script {
         rootdir [::twebserver::get_rootdir] \
         bundle_outdir [file join [::twebserver::get_rootdir] public bundle]]
 
-    ::twebserver::create_router router
+    ::twebserver::create_router -command_name process_conn router
 
     ::twebserver::add_middleware \
         -enter_proc ::treqmon::enter \
@@ -33,7 +32,7 @@ set init_script {
     ::twebserver::add_route $router GET "/stats" get_stats_handler
     ::twebserver::add_route $router GET "*" get_catchall_handler
 
-    interp alias {} process_conn {} $router
+    #interp alias {} process_conn {} $router
 
 
     proc path_join {args} {

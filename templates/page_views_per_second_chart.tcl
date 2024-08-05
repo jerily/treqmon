@@ -1,3 +1,5 @@
+package require tjson
+
 set page_view_stats [dict get $__data__ page_view_stats]
 
 set second_stats_dict [dict get $page_view_stats second]

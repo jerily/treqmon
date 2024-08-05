@@ -1,3 +1,5 @@
+package require tjson
+
 set response_time_stats [dict get $__data__ response_time_stats]
 
 set minute_stats_dict [dict get $response_time_stats minute]
