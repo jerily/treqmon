@@ -29,7 +29,7 @@ set init_script {
         -leave_proc ::treqmon::leave \
         $router
 
-    ::twebserver::add_route -prefix $router GET /(css|js|assets|bundle)/ get_css_or_js_or_assets_handler
+    ::twebserver::add_route -prefix $router GET /(css|js|assets|bundle)/ get_assets_handler
     ::twebserver::add_route $router GET "/stats" get_stats_handler
     ::twebserver::add_route $router GET "*" get_catchall_handler
 
@@ -55,7 +55,7 @@ set init_script {
         return $normalized_path
     }
 
-    proc get_css_or_js_or_assets_handler {ctx req} {
+    proc get_assets_handler {ctx req} {
         set path [dict get $req path]
         set dir [file normalize [::thtml::get_rootdir]]
         set filepath [path_join $dir public $path]
@@ -82,7 +82,8 @@ set init_script {
     }
 
     proc get_catchall_handler {ctx req} {
-        set res [::twebserver::build_response 200 text/plain "Hello [dict get $req path]"]
+        set html "Hello [dict get $req path]<br /><br /><a href=\"/stats\">Stats</a>"
+        set res [::twebserver::build_response 200 "text/html; charset=utf-8" $html]
         return $res
     }
 
