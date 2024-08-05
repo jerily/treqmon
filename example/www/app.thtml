@@ -4,9 +4,10 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <bundle url_prefix="$bundle_url_prefix" />
+        <bundle_css url_prefix="$bundle_css_url_prefix" />
     </head>
     <body>
         <Stats />
+        <bundle_js url_prefix="$bundle_js_url_prefix" />
     </body>
 </html>

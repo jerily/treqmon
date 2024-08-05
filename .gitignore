@@ -6,7 +6,7 @@ models
 *.so
 node_modules
 cache
-bundle_*.js
+bundle
 /ttrek-venv
 /ttrek.json
 /ttrek-lock.json

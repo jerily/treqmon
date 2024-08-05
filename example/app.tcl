@@ -20,7 +20,7 @@ set init_script {
         cache 0 \
         target_lang tcl \
         rootdir [::twebserver::get_rootdir] \
-        bundle_outdir [file join [::twebserver::get_rootdir] public js]]
+        bundle_outdir [file join [::twebserver::get_rootdir] public bundle]]
 
     ::twebserver::create_router router
 
@@ -29,7 +29,7 @@ set init_script {
         -leave_proc ::treqmon::leave \
         $router
 
-    ::twebserver::add_route -prefix $router GET /(css|js|assets)/ get_css_or_js_or_assets_handler
+    ::twebserver::add_route -prefix $router GET /(css|js|assets|bundle)/ get_css_or_js_or_assets_handler
     ::twebserver::add_route $router GET "/stats" get_stats_handler
     ::twebserver::add_route $router GET "*" get_catchall_handler
 
@@ -75,7 +75,7 @@ set init_script {
     }
 
     proc get_stats_handler {ctx req} {
-        set data [dict merge $req [list bundle_url_prefix "/js/"]]
+        set data [dict merge $req [list bundle_js_url_prefix "/bundle" bundle_css_url_prefix "/bundle"]]
         set html [::thtml::renderfile app.thtml $data]
         set res [::twebserver::build_response 200 "text/html; charset=utf-8" $html]
         return $res
