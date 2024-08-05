@@ -84,7 +84,7 @@ set base 1720584267
 
 # This is where we define the history of events. The first number is
 # the number of seconds into the past relative to the previous event.
-# The second number is the duration of the event in milliseconds.
+# The second number is the duration of the event in ms.
 set history [history_generator $base {
     - { 1st second, 5 events, average duration: 76.2 }
     0  10

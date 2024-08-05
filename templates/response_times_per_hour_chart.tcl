@@ -59,7 +59,7 @@ set data_typed [list M [list \
 set options_typed {M {
     scales {M {
         x {M {title {M {display {BOOL 1} text {S "Hour"}}}}}
-        y {M {title {M {display {BOOL 1} text {S "Avg Response Time (in millihours)"}}} beginAtZero {BOOL 1}}}
+        y {M {title {M {display {BOOL 1} text {S "Avg Response Time (in ms)"}}} beginAtZero {BOOL 1}}}
     }}
 }}
 
