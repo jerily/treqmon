@@ -4,10 +4,25 @@
 
 package require Thread
 
-namespace eval ::treqmon::worker {}
+namespace eval ::treqmon::worker {
+    variable config
+    variable history_max_events
+}
 
-proc ::treqmon::worker::validate_config { config } {
-    dict for { k v } $config {
+proc ::treqmon::worker::init { config_dict } {
+    variable config
+    variable history_max_events
+
+    validate_config $config_dict
+
+    set config $config_dict
+
+    set history_max_events [dict get $config -history_max_events]
+
+}
+
+proc ::treqmon::worker::validate_config { config_dict } {
+    dict for { k v } $config_dict {
        switch -exact -- $k {
            -history_max_events {
                if { ![string is integer -strict $v] || $v < 0 } {
@@ -29,36 +44,18 @@ proc ::treqmon::worker::validate_config { config } {
     }
 }
 
-proc ::treqmon::worker::register_event { ctx req res } {
+proc ::treqmon::worker::register_event { event } {
+    variable config
+    variable history_max_events
+
+    dict lappend event server_tid [thread::id]
 
     if { [catch {
-
-    tsv::get ::treqmon workerConfig config
 
     # calculate all required event properties
 
     # TODO:
     #     remote_hostname - try to detect real remote hostname from remote_ip
-
-    set event [dict create \
-        remote_addr          [dict get $ctx addr] \
-        remote_hostname      [dict get $ctx addr] \
-        remote_logname       "-" \
-        remote_user          "-" \
-        server_port          [dict get $ctx port] \
-        server_tid           [dict get $ctx treqmon thread_id] \
-        server_pid           [pid] \
-        request_first_line   "[dict get $req httpMethod] [dict get $req url] [dict get $req version]" \
-        request_protocol     [dict get $req version] \
-        request_headers      [dict get $req headers] \
-        request_method       [dict get $req httpMethod] \
-        request_query        [dict get $req queryString] \
-        request_path         [dict get $req path] \
-        request_timestamp    [dict get $req treqmon timestamp] \
-        response_status_code [dict get $res statusCode] \
-        response_size        [dict get $res body_size] \
-        response_timestamp   [dict get $res treqmon timestamp] \
-    ]
 
     unset -nocomplain output_id
     foreach { output_type output_config } [dict get $config -output] {
@@ -73,7 +70,7 @@ proc ::treqmon::worker::register_event { ctx req res } {
                 [set threshold [dict get $output_config -threshold]] > 1
         } {
             set var ::treqmon::worker::output::buffer$output_id
-            tsv::lock $var {
+            if {1} {
                 if { [tsv::exists $var buffer] && [tsv::llength $var buffer] >= [incr threshold -1] } {
                     set events [tsv::pop $var buffer]
                 } else {
@@ -91,18 +88,23 @@ proc ::treqmon::worker::register_event { ctx req res } {
 
     }
 
-    tsv::lock ::treqmon::worker::history {
+    if {1} {
         # For now, we only keep timestamps rounded to seconds + response time
         # rounded to milliseconds.
         #
         # If needed in the future, we can store information with additional fields.
         #
+        set req_timestamp [dict get $event request_timestamp]
+        set res_timestamp [dict get $event response_timestamp]
+
         set h [list \
-            [expr { [dict get $req treqmon timestamp] / 1000000 }] \
-            [expr { ([dict get $res treqmon timestamp] - [dict get $req treqmon timestamp]) / 1000 }] \
+            [expr { $req_timestamp / 1000000 }] \
+            [expr { ( $res_timestamp - $req_timestamp ) / 1000 }] \
         ]
+
         tsv::lappend ::treqmon::worker::history events $h
-        if { [tsv::llength ::treqmon::worker::history events] > [dict get $config -history_max_events] } {
+
+        if { [tsv::llength ::treqmon::worker::history events] > $history_max_events } {
             tsv::lpop ::treqmon::worker::history events 0
         }
     }

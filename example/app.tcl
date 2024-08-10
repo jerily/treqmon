@@ -5,8 +5,15 @@
 package require twebserver
 package require treqmon
 
-set pool_config [::treqmon::init {}]
-puts "pool_config=$pool_config"
+set tpool_id [::treqmon::init {
+    worker {
+        -output {
+            console {
+            }
+        }
+        -history_max_events 1000000
+    }
+}]
 
 set init_script {
 
@@ -16,7 +23,7 @@ set init_script {
 
     ::thtml::init [dict create \
         debug 1 \
-        cache 0 \
+        cache 1 \
         target_lang tcl \
         rootdir [::twebserver::get_rootdir] \
         bundle_outdir [file join [::twebserver::get_rootdir] public bundle]]
@@ -94,7 +101,7 @@ set config_dict [dict create \
     gzip_types [list text/html text/plain application/json] \
     gzip_min_length 8192 \
     conn_timeout_millis 10000 \
-    treqmon $pool_config]
+    tpool_id $tpool_id]
 
 set server_handle [::twebserver::create_server -with_router $config_dict process_conn $init_script]
 ::twebserver::listen_server -http -num_threads 4 $server_handle 8080

@@ -37,7 +37,7 @@ proc ::treqmon::worker::file::process_events { output_id config events } {
     }
 
     # Ensure that all events for specific file path are mutex-protected
-    tsv::lock ::treqmon::worker::file::${lockvar}::lock {
+    if {1} {
 
         if { $lockvar eq "console" } {
             set chan $path

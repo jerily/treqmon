@@ -6,6 +6,8 @@ package require Thread
 
 namespace eval ::treqmon {
 
+    variable tpool_id
+
     variable default_config {
         tpool {
             -minworkers 1
@@ -40,6 +42,7 @@ namespace eval ::treqmon {
 proc ::treqmon::init { {config {}} } {
 
     variable default_config
+    variable tpool_id
 
     # Validate specified configuration
     foreach key [dict keys $config] {
@@ -58,14 +61,13 @@ proc ::treqmon::init { {config {}} } {
         set worker_config [dict merge $worker_config [dict get $config worker]]
     }
 
-    ::treqmon::worker::validate_config $worker_config
+    set initcmd [join [list [list package require treqmon] [list ::treqmon::worker::init $worker_config]] "\n"]
+    #puts initcmd=$initcmd
+    dict set tpool_config -initcmd $initcmd
 
-    tsv::set ::treqmon workerConfig $worker_config
+    set tpool_id [tpool::create {*}$tpool_config]
 
-    dict set tpool_config -initcmd [list package require treqmon]
-
-    tsv::set ::treqmon workerPoolId [tpool::create {*}$tpool_config]
-
+    return $tpool_id
 }
 
 proc ::treqmon::enter { ctx req } {
@@ -74,12 +76,31 @@ proc ::treqmon::enter { ctx req } {
 }
 
 proc ::treqmon::leave { ctx req res } {
-    dict set res treqmon timestamp [clock microseconds]
-    dict set ctx treqmon thread_id [thread::id]
-    if { [tsv::get ::treqmon workerPoolId poolId] } {
-        ::tpool::post -detached -nowait $poolId \
-            [list ::treqmon::worker::register_event $ctx [filter_body $req] [filter_body $res]]
-    }
+    set config_dict [::twebserver::get_config_dict]
+    set tpool_id [dict get $config_dict tpool_id]
+
+    set event [dict create \
+        remote_addr          [dict get $ctx addr] \
+        remote_hostname      [dict get $ctx addr] \
+        remote_logname       "-" \
+        remote_user          "-" \
+        server_port          [dict get $ctx port] \
+        server_pid           [pid] \
+        request_first_line   "[dict get $req httpMethod] [dict get $req url] [dict get $req version]" \
+        request_protocol     [dict get $req version] \
+        request_headers      [dict get $req headers] \
+        request_method       [dict get $req httpMethod] \
+        request_query        [dict get $req queryString] \
+        request_path         [dict get $req path] \
+        request_timestamp    [dict get $req treqmon timestamp] \
+        response_status_code [dict get $res statusCode] \
+        response_size        [string length [dict get $res body]] \
+        response_timestamp   [clock microseconds] \
+    ]
+
+    ::tpool::post -nowait $tpool_id \
+        [list ::treqmon::worker::register_event $event]
+
     return $res
 }
 
