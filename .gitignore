@@ -7,6 +7,4 @@ models
 node_modules
 cache
 bundle
-/ttrek-venv
-/ttrek.json
-/ttrek-lock.json
+ttrek-venv

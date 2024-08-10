@@ -67,7 +67,7 @@ set init_script {
         } elseif { $ext eq {.svg} } {
             set mimetype image/svg+xml
         } else {
-            error "get_css_or_js_handler: unsupported extension \"$ext\""
+            error "get_assets_handler: unsupported extension \"$ext\""
         }
         set res [::twebserver::build_response -return_file 200 $mimetype $filepath]
         return $res

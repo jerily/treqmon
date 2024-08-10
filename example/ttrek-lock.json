@@ -1,0 +1,102 @@
+{
+  "packages": {
+    "zlib": {
+      "version": "1.3.1",
+      "requires": {
+
+      },
+      "iuse": [
+
+      ],
+      "use": [
+
+      ]
+    },
+    "openssl": {
+      "version": "3.2.1",
+      "requires": {
+
+      },
+      "iuse": [
+        "+static",
+        "-docs"
+      ],
+      "use": [
+
+      ]
+    },
+    "tcl": {
+      "version": "9.0.0-beta.3",
+      "requires": {
+        "zlib": "^1.3.1"
+      },
+      "iuse": [
+        "+debug",
+        "+sanitize",
+        "+static"
+      ],
+      "use": [
+
+      ]
+    },
+    "tdom": {
+      "version": "0.9.4",
+      "requires": {
+        "tcl": "^9.0.0-beta.3"
+      },
+      "iuse": [
+
+      ],
+      "use": [
+
+      ]
+    },
+    "tjson": {
+      "version": "1.0.25",
+      "requires": {
+        "tcl": ">=8.6.14"
+      },
+      "iuse": [
+
+      ],
+      "use": [
+
+      ]
+    },
+    "twebserver": {
+      "version": "1.47.49",
+      "requires": {
+        "openssl": "^3.0.13",
+        "tcl": ">=8.6.14"
+      },
+      "iuse": [
+
+      ],
+      "use": [
+
+      ]
+    },
+    "thtml": {
+      "version": "1.5.0",
+      "requires": {
+        "tcl": "^9.0.0-beta.1",
+        "tdom": "^0.9.3"
+      },
+      "iuse": [
+
+      ],
+      "use": [
+
+      ]
+    }
+  },
+  "dependencies": {
+    "tjson": "^1.0.25",
+    "twebserver": "^1.47.49",
+    "thtml": "^1.5.0",
+    "zlib": "^1.3.1",
+    "openssl": "^3.2.1",
+    "tcl": "^9.0.0-beta.3",
+    "tdom": "^0.9.4"
+  }
+}

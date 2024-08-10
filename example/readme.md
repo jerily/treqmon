@@ -2,6 +2,6 @@
 
 ## Requirements
 
-- twebserver 1.47.45 or later
+- twebserver 1.47.49 or later
 - thtml
 - tjson

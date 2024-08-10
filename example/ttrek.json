@@ -1,0 +1,19 @@
+{
+  "name": "treqmon-example",
+  "version": "1.0.0",
+  "scripts": {
+
+  },
+  "dependencies": {
+    "tjson": "^1.0.25",
+    "twebserver": "^1.47.49",
+    "thtml": "^1.5.0",
+    "zlib": "^1.3.1",
+    "openssl": "^3.2.1",
+    "tcl": "^9.0.0-beta.3",
+    "tdom": "^0.9.4"
+  },
+  "devDependencies": {
+
+  }
+}
