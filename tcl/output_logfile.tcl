@@ -50,8 +50,10 @@ proc ::treqmon::worker::logfile::log_event { event } {
     lappend buffer_events $event
 
     if { [llength $buffer_events] > $threshold } {
-        foreach event $buffer_events {
-            puts $chan [::treqmon::util::format_event $format_string $event]
+        tsv::lock access_log {
+            foreach event $buffer_events {
+                puts $chan [::treqmon::util::format_event $format_string $event]
+            }
         }
         set buffer_events {}
     }
