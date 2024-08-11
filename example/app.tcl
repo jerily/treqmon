@@ -14,7 +14,7 @@ set treqmon_config_dict {
     }
 }
 
-dict set treqmon_config_dict worker output console {}
+# dict set treqmon_config_dict worker output console {}
 # dict set treqmon_config_dict worker output logfile path $treqmon_logfile_path
 
 set treqmon_worker_thread_id [::treqmon::init_main $treqmon_config_dict]

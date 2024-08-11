@@ -57,7 +57,7 @@ proc ::treqmon::init_main { {config {}} } {
         [list ::treqmon::worker::init $worker_config] \
         [list ::thread::wait]] "\n"]
 
-    set worker_thread_id [thread::create -preserved $initcmd]
+    set worker_thread_id [thread::create -joinable $initcmd]
     return $worker_thread_id
 }
 
@@ -326,6 +326,6 @@ proc ::treqmon::get_summary {events {now_in_seconds ""}} {
 proc ::treqmon::shutdown {} {
     variable worker_thread_id
     thread::send $worker_thread_id [list ::treqmon::worker::shutdown]
-    thread::release $worker_thread_id
+    thread::join $worker_thread_id
     return
 }
