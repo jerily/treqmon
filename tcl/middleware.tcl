@@ -1,11 +1,10 @@
 namespace eval ::treqmon::middleware {
-    variable global_thread_id
+    variable worker_thread_id
 }
 
-proc ::treqmon::middleware::init {} {
-    variable global_thread_id
-    set config_dict [::twebserver::get_config_dict]
-    set global_thread_id [dict get $config_dict global_thread_id]
+proc ::treqmon::middleware::init {config_dict} {
+    variable worker_thread_id
+    set worker_thread_id [dict get $config_dict worker_thread_id]
 }
 
 proc ::treqmon::middleware::enter { ctx req } {
@@ -14,7 +13,7 @@ proc ::treqmon::middleware::enter { ctx req } {
 }
 
 proc ::treqmon::middleware::leave { ctx req res } {
-    variable global_thread_id
+    variable worker_thread_id
 
     set event [dict create \
         remote_addr          [dict get $ctx addr] \
@@ -35,10 +34,7 @@ proc ::treqmon::middleware::leave { ctx req res } {
         response_timestamp   [clock microseconds] \
     ]
 
-#    ::tpool::post -nowait $tpool_id \
-#        [list ::treqmon::worker::register_event $event]
-
-    ::thread::send -async $global_thread_id [list ::treqmon::worker::register_event $event]
+    ::thread::send -async $worker_thread_id [list ::treqmon::worker::register_event $event]
 
     return $res
 }

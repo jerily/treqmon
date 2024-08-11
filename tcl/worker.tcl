@@ -20,9 +20,9 @@ proc ::treqmon::worker::init { config_dict } {
 
     set config $config_dict
 
-    set history_max_events [dict get $config -history_max_events]
+    set history_max_events [dict get $config history_max_events]
 
-    foreach { output_type output_config } [dict get $config -output] {
+    foreach { output_type output_config } [dict get $config output] {
         ${output_type}::init $output_config
         lappend output_types $output_type
     }
@@ -31,13 +31,13 @@ proc ::treqmon::worker::init { config_dict } {
 proc ::treqmon::worker::validate_config { config_dict } {
     dict for { k v } $config_dict {
        switch -exact -- $k {
-           -history_max_events {
+           history_max_events {
                if { ![string is integer -strict $v] || $v < 0 } {
                    return -code error "$k option expects unsigned integer value,\
                        but got \"$v\""
                }
            }
-           -output {
+           output {
                foreach { output_type output_config } $v {
                    if { ![llength [info commands ${output_type}::log_event]] } {
                        return -code error "unknown output type \"$output_type\""

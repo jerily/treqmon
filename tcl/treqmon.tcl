@@ -9,18 +9,13 @@ namespace eval ::treqmon {
     variable worker_thread_id
 
     variable default_config {
-        tpool {
-            -minworkers 1
-            -maxworkers 4
-            -idletime 30
-        }
         worker {
-            -output {
+            output {
                 console {
                     threshold 100
                 }
             }
-            -history_max_events 1000000
+            history_max_events 1000000
         }
     }
 
@@ -40,7 +35,7 @@ namespace eval ::treqmon {
 
 }
 
-proc ::treqmon::init { {config {}} } {
+proc ::treqmon::init_main { {config {}} } {
 
     variable default_config
     variable worker_thread_id
@@ -50,11 +45,6 @@ proc ::treqmon::init { {config {}} } {
         if { $key ni { tpool worker } } {
             return -code error "unknown key in configuration dictionary \"$key\""
         }
-    }
-
-    set tpool_config [dict get $default_config tpool]
-    if { [dict exists $config tpool] } {
-        set tpool_config [dict merge $tpool_config [dict get $config tpool]]
     }
 
     set worker_config [dict get $default_config worker]
@@ -67,12 +57,12 @@ proc ::treqmon::init { {config {}} } {
         [list ::treqmon::worker::init $worker_config] \
         [list ::thread::wait]] "\n"]
 
-    #puts initcmd=$initcmd
-#    dict set tpool_config -initcmd $initcmd
-#    set tpool_id [tpool::create {*}$tpool_config]
-
     set worker_thread_id [thread::create -preserved $initcmd]
     return $worker_thread_id
+}
+
+proc ::treqmon::init_middleware {config_dict} {
+    ::treqmon::middleware::init $config_dict
 }
 
 proc ::treqmon::filter_events {events now_in_seconds {from_seconds ""} {to_seconds ""}} {
@@ -135,13 +125,13 @@ proc ::treqmon::filter_events {events now_in_seconds {from_seconds ""} {to_secon
 #     #     { 600 6 }
 #
 proc ::treqmon::get_history_events {{now_in_seconds ""} {from_seconds ""} {to_seconds ""} } {
-    variable ::treqmon::middleware::global_thread_id
+    variable ::treqmon::middleware::worker_thread_id
 
     if { $now_in_seconds eq {} } {
         set now_in_seconds [clock seconds]
     }
 
-    set history_events [thread::send $global_thread_id [list ::treqmon::worker::get_history_events]]
+    set history_events [thread::send $worker_thread_id [list ::treqmon::worker::get_history_events]]
     set result [filter_events $history_events $now_in_seconds $from_seconds $to_seconds]
 
     return $result

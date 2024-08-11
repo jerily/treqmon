@@ -5,13 +5,13 @@
 package require twebserver
 package require treqmon
 
-set global_thread_id [::treqmon::init {
+set treqmon_worker_thread_id [::treqmon::init_main {
     worker {
-        -output {
+        output {
             console {
             }
         }
-        -history_max_events 1000000
+        history_max_events 1000000
     }
 }]
 
@@ -28,7 +28,10 @@ set init_script {
         rootdir [::twebserver::get_rootdir] \
         bundle_outdir [file join [::twebserver::get_rootdir] public bundle]]
 
-    ::treqmon::middleware::init
+    set config_dict [::twebserver::get_config_dict]
+
+    ::treqmon::init_middleware [dict create \
+        worker_thread_id [dict get $config_dict treqmon worker_thread_id]]
 
     ::twebserver::create_router -command_name process_conn router
 
@@ -103,7 +106,7 @@ set config_dict [dict create \
     gzip_types [list text/html text/plain application/json] \
     gzip_min_length 8192 \
     conn_timeout_millis 10000 \
-    global_thread_id $global_thread_id]
+    treqmon [list worker_thread_id $treqmon_worker_thread_id]]
 
 set server_handle [::twebserver::create_server -with_router $config_dict process_conn $init_script]
 ::twebserver::listen_server -http -num_threads 4 $server_handle 8080
