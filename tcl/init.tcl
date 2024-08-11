@@ -13,6 +13,7 @@ source [file join $dir util.tcl]
 source [file join $dir output_console.tcl]
 source [file join $dir output_logfile.tcl]
 source [file join $dir memstore.tcl]
+source [file join $dir tsvstore.tcl]
 
 namespace eval ::treqmon {
     variable __thtml__ [file join $::dir .. templates]

@@ -131,7 +131,8 @@ proc ::treqmon::get_history_events {{now_in_seconds ""} {from_seconds ""} {to_se
         set now_in_seconds [clock seconds]
     }
 
-    set history_events [thread::send $worker_thread_id [list ::treqmon::worker::get_history_events]]
+    # set history_events [thread::send $worker_thread_id [list ::treqmon::worker::get_history_events]]
+    set history_events [tsv::get history_events events]
     set result [filter_events $history_events $now_in_seconds $from_seconds $to_seconds]
 
     return $result

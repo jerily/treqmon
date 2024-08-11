@@ -20,7 +20,7 @@ proc ::treqmon::worker::memstore::get_num_events {} {
 
 proc ::treqmon::worker::memstore::drop_oldest_events { num_drop_events } {
     variable history_events
-    set history_events [lrange $history_events $num_drop_events end]
+    set history_events [lreplace $history_events 0 $num_drop_events]
 }
 
 proc ::treqmon::worker::memstore::get_history_events {} {

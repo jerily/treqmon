@@ -58,6 +58,11 @@ proc ::treqmon::worker::validate_config { config_dict } {
                    }
                }
            }
+           store {
+               if { ![llength [info commands ::treqmon::worker::${v}::init]] } {
+                   return -code error "unknown store type \"$v\""
+               }
+           }
            default {
                return -code error "unknown option \"$k\" for ::treqmon::worker"
            }

@@ -8,6 +8,7 @@ package require treqmon
 set treqmon_logfile_path [file normalize [file join [file dirname [info script]] logs access.log]]
 set treqmon_config_dict {
     worker {
+        store "tsvstore"
         output {
         }
         history_max_events 1000000
