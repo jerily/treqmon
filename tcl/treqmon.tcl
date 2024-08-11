@@ -325,5 +325,7 @@ proc ::treqmon::get_summary {events {now_in_seconds ""}} {
 
 proc ::treqmon::shutdown {} {
     variable worker_thread_id
-    return [thread::release $worker_thread_id]
+    thread::send $worker_thread_id [list ::treqmon::worker::shutdown]
+    thread::release $worker_thread_id
+    return
 }

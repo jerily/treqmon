@@ -7,4 +7,5 @@ models
 node_modules
 cache
 bundle
+logs
 ttrek-venv

@@ -10,8 +10,8 @@ source [file join $dir treqmon.tcl]
 source [file join $dir worker.tcl]
 source [file join $dir middleware.tcl]
 source [file join $dir util.tcl]
-source [file join $dir output_file.tcl]
 source [file join $dir output_console.tcl]
+source [file join $dir output_logfile.tcl]
 
 namespace eval ::treqmon {
     variable __thtml__ [file join $::dir .. templates]

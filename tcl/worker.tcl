@@ -113,3 +113,12 @@ proc ::treqmon::worker::get_history_events {} {
     variable history_events
     return $history_events
 }
+
+proc ::treqmon::worker::shutdown {} {
+    variable output_types
+    foreach output_type $output_types {
+        # e.g. console::shutdown
+        ${output_type}::shutdown
+    }
+    return
+}

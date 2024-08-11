@@ -5,15 +5,19 @@
 package require twebserver
 package require treqmon
 
-set treqmon_worker_thread_id [::treqmon::init_main {
+set treqmon_logfile_path [file normalize [file join [file dirname [info script]] logs access.log]]
+set treqmon_config_dict {
     worker {
         output {
-            console {
-            }
         }
         history_max_events 1000000
     }
-}]
+}
+
+dict set treqmon_config_dict worker output console {}
+# dict set treqmon_config_dict worker output logfile path $treqmon_logfile_path
+
+set treqmon_worker_thread_id [::treqmon::init_main $treqmon_config_dict]
 
 set init_script {
 
