@@ -1,3 +1,5 @@
+namespace eval ::treqmon::memstore {}
+
 namespace eval ::treqmon::middleware::memstore {}
 
 namespace eval ::treqmon::worker::memstore {

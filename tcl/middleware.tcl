@@ -1,14 +1,14 @@
 namespace eval ::treqmon::middleware {
     variable store
-    variable worker_thread_id
+    variable worker_id
 }
 
 proc ::treqmon::middleware::init {config_dict} {
     variable store
-    variable worker_thread_id
+    variable worker_id
 
     set store [dict get $config_dict store]
-    set worker_thread_id [dict get $config_dict worker_thread_id]
+    set worker_id [dict get $config_dict worker_id]
 }
 
 proc ::treqmon::middleware::enter { ctx req } {
@@ -17,7 +17,8 @@ proc ::treqmon::middleware::enter { ctx req } {
 }
 
 proc ::treqmon::middleware::leave { ctx req res } {
-    variable worker_thread_id
+    variable worker_id
+    variable store
 
     set event [dict create \
         remote_addr          [dict get $ctx addr] \
@@ -38,13 +39,20 @@ proc ::treqmon::middleware::leave { ctx req res } {
         response_timestamp   [clock microseconds] \
     ]
 
-    ::thread::send -async $worker_thread_id [list ::treqmon::worker::register_event $event]
+    ${store}::register_event $worker_id $event
 
     return $res
 }
 
 proc ::treqmon::middleware::get_history_events {} {
     variable store
-    variable worker_thread_id
-    return [${store}::get_history_events $worker_thread_id]
+    variable worker_id
+    return [${store}::get_history_events $worker_id]
+}
+
+proc ::treqmon::middleware::register_event_with_pool {worker_pool_id event} {
+    ::tpool::post -nowait $worker_pool_id \
+        [list ::treqmon::worker::register_event $event]
+
+    return
 }

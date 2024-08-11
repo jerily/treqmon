@@ -1,3 +1,5 @@
+namespace eval ::treqmon::tsvstore {}
+
 namespace eval ::treqmon::middleware::tsvstore {}
 
 namespace eval ::treqmon::worker::tsvstore {

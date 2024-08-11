@@ -6,9 +6,14 @@ package require Thread
 
 namespace eval ::treqmon {
 
-    variable worker_thread_id
+    variable worker_id
 
     variable config {
+        tpool {
+            minworkers 1
+            maxworkers 4
+            idletime 30
+        }
         worker {
             store "memstore"
             store_config {}
@@ -40,7 +45,7 @@ namespace eval ::treqmon {
 proc ::treqmon::init_main {{config_dict {}}} {
 
     variable config
-    variable worker_thread_id
+    variable worker_id
 
     # Validate specified configuration
     foreach key [dict keys $config] {
@@ -52,13 +57,10 @@ proc ::treqmon::init_main {{config_dict {}}} {
     set config [dict merge $config $config_dict]
     set worker_config [dict get $config worker]
 
-    set initcmd [join [list \
-        [list package require treqmon] \
-        [list ::treqmon::worker::init $worker_config] \
-        [list ::thread::wait]] "\n"]
+    set tpool_config [dict get $config tpool]
+    set worker_id [init_pool $tpool_config $worker_config]
 
-    set worker_thread_id [thread::create -joinable $initcmd]
-    return $worker_thread_id
+    return $worker_id
 }
 
 proc ::treqmon::init_middleware {config_dict} {
@@ -322,8 +324,31 @@ proc ::treqmon::get_summary {events {now_in_seconds ""}} {
 }
 
 proc ::treqmon::shutdown {} {
-    variable worker_thread_id
-    thread::send $worker_thread_id [list ::treqmon::worker::shutdown]
-    thread::join $worker_thread_id
+    variable worker_id
+    shutdown_pool $worker_id
+    return
+}
+
+
+proc ::treqmon::init_pool {store_config worker_config} {
+
+    set initcmd [join [list \
+        [list package require treqmon] \
+        [list ::treqmon::worker::init $worker_config]] "\n"]
+
+    set minworkers [dict get $store_config minworkers]
+    set maxworkers [dict get $store_config maxworkers]
+    set idletime [dict get $store_config idletime]
+
+    set args [list -minworkers $minworkers -maxworkers $maxworkers -idletime $idletime -initcmd $initcmd]
+
+    set worker_pool_id [tpool::create {*}$args]
+
+    puts worker_pool_id=$worker_pool_id
+    return $worker_pool_id
+}
+
+proc ::treqmon::shutdown_pool {worker_id} {
+    tpool::release $worker_id
     return
 }
