@@ -5,7 +5,16 @@
 package require Thread
 
 namespace eval ::treqmon::worker {
-    variable config
+    variable config {
+        store "memstore"
+        store_config {}
+        output {
+            console {
+                threshold 100
+            }
+        }
+        history_max_events 1000000
+    }
     variable output_types {}
     variable history_max_events
     variable history_events {}
@@ -15,17 +24,22 @@ proc ::treqmon::worker::init { config_dict } {
     variable config
     variable output_types
     variable history_max_events
+    variable store
+    variable store_config
 
     validate_config $config_dict
 
-    set config $config_dict
-
+    set config [dict merge $config $config_dict]
+    set store [dict get $config store]
+    set store_config [dict get $config store_config]
     set history_max_events [dict get $config history_max_events]
 
     foreach { output_type output_config } [dict get $config output] {
         ${output_type}::init $output_config
         lappend output_types $output_type
     }
+
+    ${store}::init $store_config
 }
 
 proc ::treqmon::worker::validate_config { config_dict } {
@@ -83,6 +97,7 @@ proc ::treqmon::worker::log_history_event {event} {
 proc ::treqmon::worker::push_history_event {event} {
     variable history_events
     variable history_max_events
+    variable store
 
     # For now, we only keep timestamps rounded to seconds + response time
     # rounded to milliseconds.
@@ -97,21 +112,21 @@ proc ::treqmon::worker::push_history_event {event} {
         [expr { ( $res_timestamp - $req_timestamp ) / 1000 }] \
     ]
 
-    lappend history_events $h
+    ${store}::push_event $h
 
     # Drop oldest events if the buffer is full
-    set len [llength $history_events]
+    set len [${store}::get_num_events]
     if { $len > [expr { 1.5 * $history_max_events }] } {
         set num_drop_events [expr { $len - $history_max_events }]
-        set history_events [lrange $history_events $num_drop_events end]
+        ${store}::drop_events $num_drop_events
     }
 
     return
 }
 
 proc ::treqmon::worker::get_history_events {} {
-    variable history_events
-    return $history_events
+    variable store
+    return [${store}::get_history_events]
 }
 
 proc ::treqmon::worker::shutdown {} {

@@ -8,8 +8,10 @@ namespace eval ::treqmon {
 
     variable worker_thread_id
 
-    variable default_config {
+    variable config {
         worker {
+            store "memstore"
+            store_config {}
             output {
                 console {
                     threshold 100
@@ -35,9 +37,9 @@ namespace eval ::treqmon {
 
 }
 
-proc ::treqmon::init_main { {config {}} } {
+proc ::treqmon::init_main {{config_dict {}}} {
 
-    variable default_config
+    variable config
     variable worker_thread_id
 
     # Validate specified configuration
@@ -47,10 +49,8 @@ proc ::treqmon::init_main { {config {}} } {
         }
     }
 
-    set worker_config [dict get $default_config worker]
-    if { [dict exists $config worker] } {
-        set worker_config [dict merge $worker_config [dict get $config worker]]
-    }
+    set config [dict merge $config $config_dict]
+    set worker_config [dict get $config worker]
 
     set initcmd [join [list \
         [list package require treqmon] \
