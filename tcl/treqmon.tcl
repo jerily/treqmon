@@ -125,14 +125,11 @@ proc ::treqmon::filter_events {events now_in_seconds {from_seconds ""} {to_secon
 #     #     { 600 6 }
 #
 proc ::treqmon::get_history_events {{now_in_seconds ""} {from_seconds ""} {to_seconds ""} } {
-    variable ::treqmon::middleware::worker_thread_id
-
     if { $now_in_seconds eq {} } {
         set now_in_seconds [clock seconds]
     }
 
-    # set history_events [thread::send $worker_thread_id [list ::treqmon::worker::get_history_events]]
-    set history_events [tsv::get history_events events]
+    set history_events [::treqmon::middleware::get_history_events]
     set result [filter_events $history_events $now_in_seconds $from_seconds $to_seconds]
 
     return $result

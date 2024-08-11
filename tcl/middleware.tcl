@@ -1,9 +1,13 @@
 namespace eval ::treqmon::middleware {
+    variable store
     variable worker_thread_id
 }
 
 proc ::treqmon::middleware::init {config_dict} {
+    variable store
     variable worker_thread_id
+
+    set store [dict get $config_dict store]
     set worker_thread_id [dict get $config_dict worker_thread_id]
 }
 
@@ -37,4 +41,10 @@ proc ::treqmon::middleware::leave { ctx req res } {
     ::thread::send -async $worker_thread_id [list ::treqmon::worker::register_event $event]
 
     return $res
+}
+
+proc ::treqmon::middleware::get_history_events {} {
+    variable store
+    variable worker_thread_id
+    return [${store}::get_history_events $worker_thread_id]
 }

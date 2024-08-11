@@ -1,3 +1,5 @@
+namespace eval ::treqmon::middleware::tsvstore {}
+
 namespace eval ::treqmon::worker::tsvstore {
     variable config {}
 }
@@ -23,5 +25,10 @@ proc ::treqmon::worker::tsvstore::drop_oldest_events { num_drop_events } {
 }
 
 proc ::treqmon::worker::tsvstore::get_history_events {} {
+    return [tsv::get history_events events]
+}
+
+proc ::treqmon::middleware::tsvstore::get_history_events {worker_thread_id} {
+    # Unused: worker_thread_id
     return [tsv::get history_events events]
 }

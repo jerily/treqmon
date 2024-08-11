@@ -1,3 +1,5 @@
+namespace eval ::treqmon::middleware::memstore {}
+
 namespace eval ::treqmon::worker::memstore {
     variable config {}
     variable history_events {}
@@ -26,4 +28,8 @@ proc ::treqmon::worker::memstore::drop_oldest_events { num_drop_events } {
 proc ::treqmon::worker::memstore::get_history_events {} {
     variable history_events
     return $history_events
+}
+
+proc ::treqmon::middleware::memstore::get_history_events {worker_thread_id} {
+    return [thread::send $worker_thread_id [list ::treqmon::worker::get_history_events]]
 }
