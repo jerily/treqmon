@@ -5,7 +5,7 @@
 package require twebserver
 package require treqmon
 
-set tpool_id [::treqmon::init {
+set global_thread_id [::treqmon::init {
     worker {
         -output {
             console {
@@ -28,11 +28,13 @@ set init_script {
         rootdir [::twebserver::get_rootdir] \
         bundle_outdir [file join [::twebserver::get_rootdir] public bundle]]
 
+    ::treqmon::middleware::init
+
     ::twebserver::create_router -command_name process_conn router
 
     ::twebserver::add_middleware \
-        -enter_proc ::treqmon::enter \
-        -leave_proc ::treqmon::leave \
+        -enter_proc ::treqmon::middleware::enter \
+        -leave_proc ::treqmon::middleware::leave \
         $router
 
     ::twebserver::add_route -prefix $router GET /(css|js|assets|bundle)/ get_assets_handler
@@ -101,7 +103,7 @@ set config_dict [dict create \
     gzip_types [list text/html text/plain application/json] \
     gzip_min_length 8192 \
     conn_timeout_millis 10000 \
-    tpool_id $tpool_id]
+    global_thread_id $global_thread_id]
 
 set server_handle [::twebserver::create_server -with_router $config_dict process_conn $init_script]
 ::twebserver::listen_server -http -num_threads 4 $server_handle 8080
@@ -110,3 +112,4 @@ puts "Server is running, go to http://localhost:8080/"
 
 ::twebserver::wait_signal
 ::twebserver::destroy_server $server_handle
+::treqmon::shutdown

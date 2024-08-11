@@ -10,7 +10,7 @@ namespace eval ::treqmon::worker::file {
         -format {%h %l %u %t "%r" %>s %b}
     }
 
-    namespace import ::treqmon::utils::*
+    namespace import ::treqmon::util::*
 
 }
 

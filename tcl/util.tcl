@@ -2,13 +2,13 @@
 # SPDX-FileCopyrightText: 2024 Neofytos Dimitriou (neo@jerily.cy)
 # SPDX-License-Identifier: MIT.
 
-namespace eval ::treqmon::utils {
+namespace eval ::treqmon::util {
 
     namespace export format_event format_get format_escape
 
 }
 
-proc ::treqmon::utils::format_escape { str } {
+proc ::treqmon::util::format_escape { str } {
     set output ""
     foreach ch [split $str ""] {
         switch -exact -- $ch {
@@ -31,7 +31,7 @@ proc ::treqmon::utils::format_escape { str } {
     return $output
 }
 
-proc ::treqmon::utils::format_get { type modifier varname ev } {
+proc ::treqmon::util::format_get { type modifier varname ev } {
     set r ""
     switch -exact -- $type {
         "%" {
@@ -168,7 +168,7 @@ proc ::treqmon::utils::format_get { type modifier varname ev } {
     return [expr { [string length $r] ? $r : "-" }]
 }
 
-proc ::treqmon::utils::format_event { frm ev } {
+proc ::treqmon::util::format_event { frm ev } {
 
     set cache [dict create]
     set output ""

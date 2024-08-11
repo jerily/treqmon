@@ -6,7 +6,7 @@ package require Thread
 
 namespace eval ::treqmon {
 
-    variable tpool_id
+    variable worker_thread_id
 
     variable default_config {
         tpool {
@@ -17,6 +17,7 @@ namespace eval ::treqmon {
         worker {
             -output {
                 console {
+                    threshold 100
                 }
             }
             -history_max_events 1000000
@@ -42,7 +43,7 @@ namespace eval ::treqmon {
 proc ::treqmon::init { {config {}} } {
 
     variable default_config
-    variable tpool_id
+    variable worker_thread_id
 
     # Validate specified configuration
     foreach key [dict keys $config] {
@@ -61,60 +62,17 @@ proc ::treqmon::init { {config {}} } {
         set worker_config [dict merge $worker_config [dict get $config worker]]
     }
 
-    set initcmd [join [list [list package require treqmon] [list ::treqmon::worker::init $worker_config]] "\n"]
+    set initcmd [join [list \
+        [list package require treqmon] \
+        [list ::treqmon::worker::init $worker_config] \
+        [list ::thread::wait]] "\n"]
+
     #puts initcmd=$initcmd
-    dict set tpool_config -initcmd $initcmd
+#    dict set tpool_config -initcmd $initcmd
+#    set tpool_id [tpool::create {*}$tpool_config]
 
-    set tpool_id [tpool::create {*}$tpool_config]
-
-    return $tpool_id
-}
-
-proc ::treqmon::enter { ctx req } {
-    dict set req treqmon timestamp [clock microseconds]
-    return $req
-}
-
-proc ::treqmon::leave { ctx req res } {
-    set config_dict [::twebserver::get_config_dict]
-    set tpool_id [dict get $config_dict tpool_id]
-
-    set event [dict create \
-        remote_addr          [dict get $ctx addr] \
-        remote_hostname      [dict get $ctx addr] \
-        remote_logname       "-" \
-        remote_user          "-" \
-        server_port          [dict get $ctx port] \
-        server_pid           [pid] \
-        request_first_line   "[dict get $req httpMethod] [dict get $req url] [dict get $req version]" \
-        request_protocol     [dict get $req version] \
-        request_headers      [dict get $req headers] \
-        request_method       [dict get $req httpMethod] \
-        request_query        [dict get $req queryString] \
-        request_path         [dict get $req path] \
-        request_timestamp    [dict get $req treqmon timestamp] \
-        response_status_code [dict get $res statusCode] \
-        response_size        [string length [dict get $res body]] \
-        response_timestamp   [clock microseconds] \
-    ]
-
-    ::tpool::post -nowait $tpool_id \
-        [list ::treqmon::worker::register_event $event]
-
-    return $res
-}
-
-# This function filters the "body" field in the dictionary and replaces it
-# with "body_size", corresponding to the size of the deleted body field.
-# The "body" field can be very large in size. With this procedure,
-# we won't be transferring large amounts of memory between threads.
-proc ::treqmon::filter_body { d } {
-    if { ![dict exists $d body] } {
-        return $d
-    }
-    dict set d body_size [string length [dict get $d body]]
-    dict unset d body
-    return $d
+    set worker_thread_id [thread::create -preserved $initcmd]
+    return $worker_thread_id
 }
 
 proc ::treqmon::filter_events {events now_in_seconds {from_seconds ""} {to_seconds ""}} {
@@ -177,18 +135,16 @@ proc ::treqmon::filter_events {events now_in_seconds {from_seconds ""} {to_secon
 #     #     { 600 6 }
 #
 proc ::treqmon::get_history_events {{now_in_seconds ""} {from_seconds ""} {to_seconds ""} } {
+    variable ::treqmon::middleware::global_thread_id
 
     if { $now_in_seconds eq {} } {
         set now_in_seconds [clock seconds]
     }
 
-    if { ![tsv::get ::treqmon::worker::history events history_events] } {
-        # error "Failed to retrieve events"
-        set history_events [list]
-    }
+    set history_events [thread::send $global_thread_id [list ::treqmon::worker::get_history_events]]
+    set result [filter_events $history_events $now_in_seconds $from_seconds $to_seconds]
 
-    set events [lsort -integer -index 0 $history_events]
-    return [filter_events $events $now_in_seconds $from_seconds $to_seconds]
+    return $result
 }
 
 # Split events by interval
@@ -222,20 +178,19 @@ proc ::treqmon::split_by_interval { events interval} {
 
     set interval_seconds $seconds_by_interval($interval)
 
-    set result [dict create]
+    array set result [list]
     foreach ev $events {
         # timestamp is in seconds
         lassign $ev timestamp duration
         set key [expr { $timestamp - ($timestamp % $interval_seconds) }]
-        if { [dict exists $result $key] } {
-            set evs [dict get $result $key]
-        } else {
-            set evs [list]
-        }
-        set evs [lsort -integer -index 0 [lappend evs $ev]]
-        dict set result $key $evs
+        lappend result($key) $ev
     }
-    return $result
+
+    foreach k [array names result] {
+        set result($k) [lsort -integer -index 0 $result($k)]
+    }
+
+    return [array get result]
 }
 
 
@@ -280,6 +235,7 @@ proc ::treqmon::get_page_views { events {now_in_seconds ""} {intervals "second m
             top_k $top_k \
             top_k_views [max_k_page_views $top_k $page_views_for_top_k]]
     }
+
     return $result
 }
 
@@ -377,301 +333,7 @@ proc ::treqmon::get_summary {events {now_in_seconds ""}} {
     return $result
 }
 
-proc ::treqmon::statistics_series { args } {
-
-    # Check if the last argument is a relative time
-    set timestamp_current [lindex $args end]
-    if { $timestamp_current eq "now" || [string is integer -strict $timestamp_current] } {
-        # Remove the last argument from the argument list
-        set args [lreplace $args end end]
-    } else {
-        set timestamp_current "now"
-    }
-
-    if { $timestamp_current eq "now" } {
-        set timestamp_current [clock seconds]
-    }
-
-    # Max number of events in the heavy_requests list
-    set heavy_requests_max_count 5
-    # The default interval
-    set interval "minute"
-
-    for { set i 0 } { $i < [llength $args] } { incr i } {
-        set arg [lindex $args $i]
-        if { $arg ni {-interval -heavy_requests} } {
-            return -code error "unknown option \"$arg\", must be\
-                -interval or -heavy_requests"
-        }
-        incr i
-        if { $i == [llength $args] } {
-            return -code error "missing value for option \"$arg\""
-        }
-        if { $arg eq "-interval" } {
-            set interval [lindex $args $i]
-            if { $interval ni {minute hour day} } {
-                return -code error "unknown interval \"$interval\",\
-                    should be minute, hour or day"
-            }
-        } else {
-            set heavy_requests_max_count [lindex $args $i]
-            if { ![string is integer -strict $heavy_requests_max_count] } {
-                return -code error "option -heavy_requests requires an integer\
-                    value, but got \"$heavy_requests_max_count\""
-            }
-        }
-
-    }
-
-    if { $interval eq "minute" } {
-        set timestamp_end [expr { $timestamp_current - 60 + 1 }]
-        # interval is 1 second
-        set interval 1
-    } elseif { $interval eq "hour" } {
-        set timestamp_end [expr { $timestamp_current - 60*60 + 1 }]
-        # interval is 1 minute
-        set interval 60
-    } elseif { $interval eq "day" } {
-        set timestamp_end [expr { $timestamp_current - 24*60*60 + 1 }]
-        # interval is 1 hour
-        set interval [expr { 60*60 }]
-    }
-
-    # Getting the request statistics into a variable so as not to block
-    # other threads from adding new records.
-    if { ![tsv::get ::treqmon::worker::history events events] } {
-        # Failed to retrieve events. Let's use an empty list.
-        set events [list]
-    }
-
-    # Initialize series dict.
-    #     count - number of events
-    #     average - average response time
-    #     duration_max - max request duration
-    #     duration_min - min request duration
-    for { set i $timestamp_current } { $i >= $timestamp_end } { incr i -$interval } {
-        dict set series $i [dict create {*}{
-            count 0
-            average 0
-            duration_max -1
-            duration_min -1
-        }]
-    }
-
-    set heavy_requests [list]
-
-    set events [lreverse $events]
-    foreach ev $events {
-
-        lassign $ev timestamp duration
-
-        # Skip events registered before the time stamp of interest.
-        if { $timestamp > $timestamp_current } {
-            continue
-        }
-
-        if { $timestamp < $timestamp_end } {
-            break
-        }
-
-        # squash the timestamp to the required interval
-        if { $interval > 1 } {
-            set x [expr { ($timestamp_current - $timestamp) / $interval }]
-            set timestamp [expr { $timestamp_current - $x * $interval }]
-        }
-
-        # Calculate total number of events for the current timestamp
-        dict set series $timestamp count [set count [expr { [dict get $series $timestamp count] + 1 }]]
-
-        # Calculate average duration for the current timestamp
-        dict set series $timestamp average [expr \
-            { 1.0 * ((1.0 * [dict get $series $timestamp average] * ($count - 1)) + $duration) / $count }]
-
-        set max [dict get $series $timestamp duration_max]
-        if { $max == -1 || $max < $duration } {
-            dict set series $timestamp duration_max $duration
-        }
-
-        set min [dict get $series $timestamp duration_min]
-        if { $min == -1 || $min > $duration } {
-            dict set series $timestamp duration_min $duration
-        }
-
-        if { [llength $heavy_requests] < $heavy_requests_max_count } {
-
-            lappend heavy_requests $ev
-            # Keep the list sorted
-            set heavy_requests [lsort -integer -index 1 -decreasing $heavy_requests]
-
-        } else {
-
-            set min_duration [lindex $heavy_requests {end 1}]
-
-            if { $duration > $min_duration } {
-                # If the duration of the current event is longer than the minimum
-                # duration in heavy_requests_min, then add this event to
-                # heavy_requests_min.
-
-                # Our heavy_requests list is sorted in decreasing order. Replace
-                # the last element as it is the element with the shortest duration.
-                set heavy_requests [lreplace $heavy_requests end end $ev]
-
-                # Keep the list sorted
-                set heavy_requests [lsort -integer -index 1 -decreasing $heavy_requests]
-            }
-
-        }
-
-    }
-
-    set sum [dict create {*}{
-        count 0
-        count_min -1
-        count_max -1
-        average_max -1
-        average_min -1
-        duration_max -1
-        duration_min -1
-    }]
-    # round all average values and calculate summary
-    dict for { k v } $series {
-
-        # skip entry if its counter is zero
-        if { ![dict get $v count] } {
-            continue
-        }
-
-        dict set v average [expr { round([dict get $v average]) }]
-        dict set series $k $v
-
-        dict incr sum count [dict get $v count]
-
-        if { [dict get $sum count_max] == -1 || [dict get $v count] > [dict get $sum count_max] } {
-            dict set sum count_max [dict get $v count]
-        }
-        if { [dict get $sum count_min] == -1 || [dict get $v count] < [dict get $sum count_min] } {
-            dict set sum count_min [dict get $v count]
-        }
-
-        if { [dict get $sum average_max] == -1 || [dict get $v average] > [dict get $sum average_max] } {
-            dict set sum average_max [dict get $v average]
-        }
-        if { [dict get $sum average_min] == -1 || [dict get $v average] < [dict get $sum average_min] } {
-            dict set sum average_min [dict get $v average]
-        }
-
-        if { [dict get $sum duration_max] == -1 || [dict get $v duration_max] > [dict get $sum duration_max] } {
-            dict set sum duration_max [dict get $v duration_max]
-        }
-        if { [dict get $sum duration_min] == -1 || [dict get $v duration_min] < [dict get $sum duration_min] } {
-            dict set sum duration_min [dict get $v duration_min]
-        }
-
-    }
-
-    return [dict create series $series heavy_requests $heavy_requests summary $sum]
-
+proc ::treqmon::shutdown {} {
+    variable worker_thread_id
+    return [thread::release $worker_thread_id]
 }
-
-proc ::treqmon::statistics { args } {
-
-    # Time window in seconds for which we want to get statistics.
-    # It is necessary not to look through all statistics, but only a specified
-    # interval (for example, last second or last minute).
-    set time_window 0
-
-    # A list of metrics to be returned, and in the order in which they
-    # appear in the arguments.
-    set metric_interval_list [list]
-
-    # Known time intervals
-    array set intervals {
-        second 0
-        minute 59
-        hour   3599
-        day    86399
-    }
-
-    unset -nocomplain timestamp_current
-
-    # Check if the last argument is a relative time
-    set timestamp_current [lindex $args end]
-    if { $timestamp_current eq "now" || [string is integer -strict $timestamp_current] } {
-        # Remove the last argument from the argument list
-        set args [lreplace $args end end]
-    } else {
-        set timestamp_current "now"
-    }
-
-    if { $timestamp_current eq "now" } {
-        set timestamp_current [clock seconds]
-    }
-
-    foreach arg $args {
-        lassign [split [string trimleft $arg -] _] metric interval
-        if { $metric ni {count average} || $interval ni {second minute hour day} } {
-            return -code error "unknown metric type \"$arg\""
-        }
-        dict set metric_count $interval $metric 0
-
-        lappend metric_interval_list [list $metric $interval]
-
-        set interval $intervals($interval)
-        if { $interval > $time_window } {
-            set time_window $interval
-        }
-    }
-
-    # Getting the request statistics into a variable so as not to block
-    # other threads from adding new records.
-    if { ![tsv::get ::treqmon::worker::history events events] } {
-        # Failed to retrieve events. Let's use an empty list.
-        set events [list]
-    }
-
-    set events [lreverse $events]
-    set count 0
-    foreach ev $events {
-
-        lassign $ev timestamp duration
-
-        if { $timestamp > $timestamp_current } {
-            continue
-        }
-
-        # The age of the current record in seconds.
-        set age [expr { $timestamp_current - $timestamp }]
-        # First, check to make sure we haven't reached a timestamp outside
-        # of our time window.
-        if { $age > $time_window } {
-            break
-        }
-
-        foreach interval [array names intervals] {
-            # Do we have metrics that need to be calculated within the interval?
-            if { $age <= $intervals($interval) && [dict exists $metric_count $interval] } {
-                if { [dict exists $metric_count $interval count] } {
-                    dict set metric_count $interval count [expr \
-                        { [dict get $metric_count $interval count] + 1 }]
-                }
-                if { [dict exists $metric_count $interval average] } {
-                    dict set metric_count $interval average [expr \
-                        { 1.0 * ((1.0 * [dict get $metric_count $interval average] * $count) + $duration) / ($count + 1) }]
-                }
-            }
-        }
-
-        incr count
-
-    }
-
-    # Generate results
-    set result [dict create]
-    foreach metric_interval_pair $metric_interval_list {
-        lassign $metric_interval_pair metric interval
-        dict set result [join $metric_interval_pair {_}] [expr { round([dict get $metric_count $interval $metric]) }]
-    }
-    return $result
-
-}
-

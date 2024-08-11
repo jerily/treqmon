@@ -8,7 +8,8 @@ set dir [file dirname [info script]]
 
 source [file join $dir treqmon.tcl]
 source [file join $dir worker.tcl]
-source [file join $dir utils.tcl]
+source [file join $dir middleware.tcl]
+source [file join $dir util.tcl]
 source [file join $dir output_file.tcl]
 source [file join $dir output_console.tcl]
 
