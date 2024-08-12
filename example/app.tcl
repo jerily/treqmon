@@ -5,17 +5,8 @@
 package require twebserver
 package require treqmon
 
-set store "tsvstore"
-
-if { $store eq {tsvstore} } {
-    set treqmon_store "tsvstore"
-    set treqmon_store_config {}
-} elseif { $store eq {memstore} } {
-    set treqmon_store "memstore"
-    set treqmon_store_config {}
-} else {
-    error "Unknown store \"$store\""
-}
+set treqmon_store "tsvstore"
+set treqmon_store_config {}
 
 
 set treqmon_logfile_path [file normalize [file join [file dirname [info script]] logs access.log]]
