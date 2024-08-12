@@ -39,7 +39,7 @@ proc ::treqmon::middleware::leave { ctx req res } {
         response_timestamp   [clock microseconds] \
     ]
 
-    ${store}::register_event $worker_id $event
+    register_event_with_pool $worker_id $event
 
     return $res
 }

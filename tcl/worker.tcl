@@ -63,6 +63,9 @@ proc ::treqmon::worker::validate_config { config_dict } {
                    return -code error "unknown store type \"$v\""
                }
            }
+           store_config {
+               # No validation for now
+           }
            default {
                return -code error "unknown option \"$k\" for ::treqmon::worker"
            }

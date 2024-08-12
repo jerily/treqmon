@@ -33,6 +33,7 @@ set treqmon_config_dict {
 }
 
 dict set treqmon_config_dict worker store $treqmon_store
+dict set treqmon_config_dict worker store_config $treqmon_store_config
 # dict set treqmon_config_dict worker output console {}
 # dict set treqmon_config_dict worker output logfile path $treqmon_logfile_path
 
