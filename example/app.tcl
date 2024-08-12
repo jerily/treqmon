@@ -47,7 +47,6 @@ set init_script {
     ::thtml::init [dict create \
         debug 1 \
         cache 1 \
-        target_lang tcl \
         rootdir [::twebserver::get_rootdir] \
         bundle_outdir [file join [::twebserver::get_rootdir] public bundle]]
 
