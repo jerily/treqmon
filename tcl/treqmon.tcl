@@ -323,32 +323,17 @@ proc ::treqmon::get_summary {events {now_in_seconds ""}} {
     return $result
 }
 
-proc ::treqmon::shutdown {} {
-    variable worker_id
-    shutdown_pool $worker_id
-    return
-}
+proc ::treqmon::shutdown_main {} {
+    variable config
 
+    set config_store_section [dict get $config store]
+    set config_logger_section [dict get $config logger]
 
-proc ::treqmon::init_pool {store_config worker_config} {
+    dict for {store store_config} $config_store_section {
+        ${store}::shutdown_main
+    }
 
-    set initcmd [join [list \
-        [list package require treqmon] \
-        [list ::treqmon::worker::init $worker_config]] "\n"]
-
-    set minworkers [dict get $store_config minworkers]
-    set maxworkers [dict get $store_config maxworkers]
-    set idletime [dict get $store_config idletime]
-
-    set args [list -minworkers $minworkers -maxworkers $maxworkers -idletime $idletime -initcmd $initcmd]
-
-    set worker_pool_id [tpool::create {*}$args]
-
-    puts worker_pool_id=$worker_pool_id
-    return $worker_pool_id
-}
-
-proc ::treqmon::shutdown_pool {worker_id} {
-    tpool::release $worker_id
-    return
+    dict for {logger logger_config} $config_logger_section {
+        ${logger}::shutdown_main
+    }
 }

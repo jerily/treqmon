@@ -6,6 +6,8 @@ proc ::treqmon::tsvstore::init_main {output_configVar config} {
     dict set output_config store "tsvstore" history_max_events [dict get $config history_max_events]
 }
 
+proc ::treqmon::tsvstore::shutdown_main {} {}
+
 namespace eval ::treqmon::middleware::tsvstore {
     variable config {}
     variable history_max_events 1000000

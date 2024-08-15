@@ -21,6 +21,11 @@ proc ::treqmon::memstore::init_main {output_configVar config} {
         history_max_events [dict get $config history_max_events]]
 }
 
+proc ::treqmon::memstore::shutdown_main {} {
+    variable worker_thread_id
+    thread::release $worker_thread_id
+}
+
 namespace eval ::treqmon::middleware::memstore {
     variable config {}
     variable history_max_events 1000000

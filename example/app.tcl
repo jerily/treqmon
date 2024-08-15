@@ -5,7 +5,7 @@
 package require twebserver
 package require treqmon
 
-set store "memstore"
+set store "tsvstore"
 if { $store eq {valkeystore} } {
     set treqmon_store "valkeystore"
     set treqmon_store_config {
@@ -133,4 +133,4 @@ puts "Server is running, go to http://localhost:8080/"
 
 ::twebserver::wait_signal
 ::twebserver::destroy_server $server_handle
-::treqmon::shutdown
+::treqmon::shutdown_main
