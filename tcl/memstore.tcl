@@ -76,7 +76,7 @@ proc ::treqmon::worker::memstore::register_datapoint { datapoint } {
     if { $len > [expr { 1.5 * $history_max_events }] } {
         set num_drop_events [expr { $len - $history_max_events - 1 }]
         # unfortunately tsv does not have a command that can drop elements without returning anything
-        set history_events [lreplace history_events events 0 $num_drop_events]
+        set history_events [lreplace $history_events 0 $num_drop_events]
     }
 
 }
