@@ -13,6 +13,8 @@ namespace eval ::treqmon::middleware::tsvstore {
 
 proc ::treqmon::middleware::tsvstore::init {config_dict} {
     variable config
+    variable history_max_events
+
     set config [dict merge $config $config_dict]
     if { [dict exists $config history_max_events] } {
         set history_max_events [dict get $config history_max_events]

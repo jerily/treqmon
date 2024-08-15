@@ -5,7 +5,7 @@
 package require twebserver
 package require treqmon
 
-set store "tsvstore"
+set store "memstore"
 if { $store eq {valkeystore} } {
     set treqmon_store "valkeystore"
     set treqmon_store_config {
@@ -14,6 +14,9 @@ if { $store eq {valkeystore} } {
     }
 } elseif { $store eq {tsvstore} } {
     set treqmon_store "tsvstore"
+    set treqmon_store_config {}
+} elseif { $store eq {memstore} } {
+    set treqmon_store "memstore"
     set treqmon_store_config {}
 } else {
     error "Unknown store \"$store\""

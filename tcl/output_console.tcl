@@ -4,8 +4,6 @@
 
 # This is just an alias for ::treqmon::worker::file
 
-package require Thread
-
 namespace eval ::treqmon::worker::console {
     variable config {
         threshold 100

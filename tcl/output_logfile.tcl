@@ -2,8 +2,6 @@
 # SPDX-FileCopyrightText: 2024 Neofytos Dimitriou (neo@jerily.cy)
 # SPDX-License-Identifier: MIT.
 
-package require Thread
-
 namespace eval ::treqmon::worker::logfile {
 
     variable config {
