@@ -25,7 +25,11 @@ proc ::treqmon::console::init_main {output_configVar config} {
         threshold [dict get $config threshold]]
 }
 
-proc ::treqmon::console::shutdown_main {} {}
+proc ::treqmon::console::shutdown_main {} {
+    variable worker_thread_id
+    thread::join $worker_thread_id
+    thread::release $worker_thread_id
+}
 
 namespace eval ::treqmon::middleware::console {
     variable config {}
