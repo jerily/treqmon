@@ -1,11 +1,13 @@
 namespace eval ::treqmon::middleware {
     variable config {}
     variable store
+    variable logger
 }
 
 proc ::treqmon::middleware::init {config_dict} {
     variable config
     variable store
+    variable logger
 
     set config [dict merge $config $config_dict]
 
@@ -60,6 +62,9 @@ proc ::treqmon::middleware::get_history_events {} {
 
 proc ::treqmon::middleware::register_event {event} {
     variable store
+    variable logger
+
+    ${logger}::log_event $event
 
     set req_timestamp [dict get $event request_timestamp]
     set res_timestamp [dict get $event response_timestamp]

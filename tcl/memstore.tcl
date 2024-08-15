@@ -23,6 +23,7 @@ proc ::treqmon::memstore::init_main {output_configVar config} {
 
 proc ::treqmon::memstore::shutdown_main {} {
     variable worker_thread_id
+    thread::join $worker_thread_id
     thread::release $worker_thread_id
 }
 
