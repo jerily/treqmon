@@ -5,30 +5,33 @@
 package require twebserver
 package require treqmon
 
-set treqmon_store "tsvstore"
-set treqmon_store_config {}
-
-
-set treqmon_logfile_path [file normalize [file join [file dirname [info script]] logs access.log]]
-set treqmon_config_dict {
-    tpool {
-        minworkers 1
-        maxworkers 4
-        idletime 30
+set store "tsvstore"
+if { $store eq {valkeystore} } {
+    set treqmon_store "valkeystore"
+    set treqmon_store_config {
+        host "localhost"
+        port 6379
     }
-    worker {
-        output {
-        }
-        history_max_events 1000000
-    }
+} elseif { $store eq {tsvstore} } {
+    set treqmon_store "tsvstore"
+    set treqmon_store_config {}
+} else {
+    error "Unknown store \"$store\""
 }
 
-dict set treqmon_config_dict worker store $treqmon_store
-dict set treqmon_config_dict worker store_config $treqmon_store_config
-# dict set treqmon_config_dict worker output console {}
-# dict set treqmon_config_dict worker output logfile path $treqmon_logfile_path
+set treqmon_logfile_path [file normalize [file join [file dirname [info script]] logs access.log]]
+set treqmon_config {
+    store {}
+    logger {}
+}
 
-set treqmon_worker_id [::treqmon::init_main $treqmon_config_dict]
+dict set treqmon_store_config history_max_events 1000000
+dict set treqmon_config store $treqmon_store $treqmon_store_config
+
+# dict set treqmon_config logger console threshold 100
+# dict set treqmon_config logger logfile path $treqmon_logfile_path
+puts $treqmon_config
+set treqmon_middleware_config [::treqmon::init_main $treqmon_config]
 
 set init_script {
     package require twebserver
@@ -43,9 +46,7 @@ set init_script {
 
     set config_dict [::twebserver::get_config_dict]
 
-    ::treqmon::init_middleware [dict create \
-        store [dict get $config_dict treqmon store] \
-        worker_id [dict get $config_dict treqmon worker_id]]
+    ::treqmon::init_middleware [dict get $config_dict treqmon]
 
     ::twebserver::create_router -command_name process_conn router
 
@@ -120,7 +121,7 @@ set config_dict [dict create \
     gzip_types [list text/html text/plain application/json] \
     gzip_min_length 8192 \
     conn_timeout_millis 10000 \
-    treqmon [list store $treqmon_store worker_id $treqmon_worker_id]]
+    treqmon $treqmon_middleware_config]
 
 set server_handle [::twebserver::create_server -with_router $config_dict process_conn $init_script]
 ::twebserver::listen_server -http -num_threads 4 $server_handle 8080

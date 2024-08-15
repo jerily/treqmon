@@ -1,14 +1,25 @@
 namespace eval ::treqmon::middleware {
+    variable config {}
     variable store
-    variable worker_id
 }
 
 proc ::treqmon::middleware::init {config_dict} {
+    variable config
     variable store
-    variable worker_id
 
-    set store [dict get $config_dict store]
-    set worker_id [dict get $config_dict worker_id]
+    set config [dict merge $config $config_dict]
+
+    if {[dict exists $config store]} {
+        dict for {store store_config} [dict get $config store] {
+            ${store}::init $store_config
+        }
+    }
+
+    if {[dict exists $config logger]} {
+        dict for {logger logger_config} [dict get $config logger] {
+            ${logger}::init $logger_config
+        }
+    }
 }
 
 proc ::treqmon::middleware::enter { ctx req } {
@@ -17,8 +28,6 @@ proc ::treqmon::middleware::enter { ctx req } {
 }
 
 proc ::treqmon::middleware::leave { ctx req res } {
-    variable worker_id
-    variable store
 
     set event [dict create \
         remote_addr          [dict get $ctx addr] \
@@ -39,20 +48,26 @@ proc ::treqmon::middleware::leave { ctx req res } {
         response_timestamp   [clock microseconds] \
     ]
 
-    register_event_with_pool $worker_id $event
+    register_event $event
 
     return $res
 }
 
 proc ::treqmon::middleware::get_history_events {} {
     variable store
-    variable worker_id
-    return [${store}::get_history_events $worker_id]
+    return [${store}::get_history_events]
 }
 
-proc ::treqmon::middleware::register_event_with_pool {worker_pool_id event} {
-    ::tpool::post -nowait $worker_pool_id \
-        [list ::treqmon::worker::register_event $event]
+proc ::treqmon::middleware::register_event {event} {
+    variable store
 
-    return
+    set req_timestamp [dict get $event request_timestamp]
+    set res_timestamp [dict get $event response_timestamp]
+
+    set h [list \
+        [expr { $req_timestamp / 1000000 }] \
+        [expr { ( $res_timestamp - $req_timestamp ) / 1000 }] \
+    ]
+
+    ${store}::register_datapoint $h
 }

@@ -6,24 +6,9 @@ package require Thread
 
 namespace eval ::treqmon {
 
-    variable worker_id
-
     variable config {
-        tpool {
-            minworkers 1
-            maxworkers 4
-            idletime 30
-        }
-        worker {
-            store "memstore"
-            store_config {}
-            output {
-                console {
-                    threshold 100
-                }
-            }
-            history_max_events 1000000
-        }
+        store {}
+        logger {}
     }
 
     array set last_seconds_by_interval {
@@ -45,26 +30,38 @@ namespace eval ::treqmon {
 proc ::treqmon::init_main {{config_dict {}}} {
 
     variable config
-    variable worker_id
+
+    set config [dict merge $config $config_dict]
 
     # Validate specified configuration
     foreach key [dict keys $config] {
-        if { $key ni { tpool worker } } {
-            return -code error "unknown key in configuration dictionary \"$key\""
+        if { $key ni { store logger } } {
+            error "unknown key in configuration dictionary \"$key\""
         }
     }
 
-    set config [dict merge $config $config_dict]
-    set worker_config [dict get $config worker]
+    set config_store_section [dict get $config store]
+    set config_logger_section [dict get $config logger]
 
-    set tpool_config [dict get $config tpool]
-    set worker_id [init_pool $tpool_config $worker_config]
+    if { [dict size $config_store_section] != 1 } {
+        error "store section must contain exactly one key"
+    }
 
-    return $worker_id
+    set output_config [dict create]
+
+    dict for {store store_config} $config_store_section {
+        ${store}::init_main output_config $store_config
+    }
+
+    dict for {logger logger_config} $config_logger_section {
+        ${logger}::init_main output_config $logger_config
+    }
+
+    return $output_config
 }
 
-proc ::treqmon::init_middleware {config_dict} {
-    ::treqmon::middleware::init $config_dict
+proc ::treqmon::init_middleware {config} {
+    middleware::init $config
 }
 
 proc ::treqmon::filter_events {events now_in_seconds {from_seconds ""} {to_seconds ""}} {
