@@ -1,25 +1,24 @@
 namespace eval ::treqmon::middleware {
     variable config {}
     variable store
-    variable logger
+    variable loggers {}
 }
 
 proc ::treqmon::middleware::init {config_dict} {
     variable config
     variable store
-    variable logger
+    variable loggers
 
     set config [dict merge $config $config_dict]
 
-    if {[dict exists $config store]} {
-        dict for {store store_config} [dict get $config store] {
-            ${store}::init $store_config
-        }
+    dict for {store store_config} [dict get $config store] {
+        ${store}::init $store_config
     }
 
     if {[dict exists $config logger]} {
         dict for {logger logger_config} [dict get $config logger] {
             ${logger}::init $logger_config
+            lappend loggers $logger
         }
     }
 }
@@ -62,9 +61,11 @@ proc ::treqmon::middleware::get_history_events {} {
 
 proc ::treqmon::middleware::register_event {event} {
     variable store
-    variable logger
+    variable loggers
 
-    ${logger}::log_event $event
+    foreach logger $loggers {
+        ${logger}::log_event $event
+    }
 
     set req_timestamp [dict get $event request_timestamp]
     set res_timestamp [dict get $event response_timestamp]

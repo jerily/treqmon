@@ -32,9 +32,9 @@ dict set treqmon_store_config history_max_events 1000000
 dict set treqmon_config store $treqmon_store $treqmon_store_config
 
 dict set treqmon_config logger console [list threshold 100]
-#dict set treqmon_config logger logfile [list \
-#    threshold 100 \
-#    path $treqmon_logfile_path]
+dict set treqmon_config logger logfile [list \
+    threshold 100 \
+    path $treqmon_logfile_path]
 
 set treqmon_middleware_config [::treqmon::init_main $treqmon_config]
 

@@ -66,13 +66,9 @@ proc ::treqmon::worker::console::init {config_dict} {
 
     set config [dict merge $config $config_dict]
 
-    if { [dict exists $config format_string] } {
-        set format_string [dict get $config format_string]
-    }
+    set format_string [dict get $config format_string]
+    set threshold [dict get $config threshold]
 
-    if { [dict exists $config threshold] } {
-        set threshold [dict get $config threshold]
-    }
 }
 
 proc ::treqmon::worker::console::log_event { event } {

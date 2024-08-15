@@ -7,7 +7,6 @@ package provide treqmon 1.0.0
 set dir [file dirname [info script]]
 
 source [file join $dir treqmon.tcl]
-source [file join $dir worker.tcl]
 source [file join $dir middleware.tcl]
 source [file join $dir util.tcl]
 source [file join $dir output_console.tcl]
