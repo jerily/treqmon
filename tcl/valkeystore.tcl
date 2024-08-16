@@ -3,11 +3,17 @@ namespace eval ::treqmon::valkeystore {}
 proc ::treqmon::valkeystore::init_main {output_configVar config} {
     upvar $output_configVar output_config
 
-    dict set output_config store "valkeystore" [list \
+    set outconf [list \
         host [dict get $config host] \
         port [dict get $config port] \
-        password [dict get $config password] \
         history_max_events [dict get $config history_max_events]]
+
+    if {[dict exists $config password]} {
+        lappend outconf password [dict get $config password]
+    }
+
+    dict set output_config store "valkeystore" $outconf
+
 }
 
 namespace eval ::treqmon::middleware::valkeystore {
@@ -29,13 +35,17 @@ proc ::treqmon::middleware::valkeystore::init {config_dict} {
     set config [dict merge $config $config_dict]
     set host [dict get $config host]
     set port [dict get $config port]
-    set password [dict get $config password]
+    set vk_args {}
+    if {[dict exists $config password]} {
+        set password [dict get $config password]
+        set vk_args [list -password $password]
+    }
 
     if { [dict exists $config history_max_events] } {
         set history_max_events [dict get $config history_max_events]
     }
 
-    set valkey_client [valkey -host $host -port $port -password $password]
+    set valkey_client [valkey -host $host -port $port {*}${vk_args}]
 
 }
 
