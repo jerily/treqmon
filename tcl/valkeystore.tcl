@@ -59,3 +59,5 @@ proc ::treqmon::middleware::valkeystore::shutdown {} {
     $valkey_client destroy
     return
 }
+
+proc ::treqmon::middleware::valkeystore::shutdown_main {} {}
