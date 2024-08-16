@@ -6,6 +6,7 @@ proc ::treqmon::valkeystore::init_main {output_configVar config} {
     dict set output_config store "valkeystore" [list \
         host [dict get $config host] \
         port [dict get $config port] \
+        password [dict get $config password] \
         history_max_events [dict get $config history_max_events]]
 }
 
@@ -28,12 +29,13 @@ proc ::treqmon::middleware::valkeystore::init {config_dict} {
     set config [dict merge $config $config_dict]
     set host [dict get $config host]
     set port [dict get $config port]
+    set password [dict get $config password]
 
     if { [dict exists $config history_max_events] } {
         set history_max_events [dict get $config history_max_events]
     }
 
-    set valkey_client [valkey -host $host -port $port]
+    set valkey_client [valkey -host $host -port $port -password $password]
 
 }
 
