@@ -72,4 +72,4 @@ proc ::treqmon::middleware::valkeystore::shutdown {} {
     return
 }
 
-proc ::treqmon::middleware::valkeystore::shutdown_main {} {}
+proc ::treqmon::valkeystore::shutdown_main {} {}
