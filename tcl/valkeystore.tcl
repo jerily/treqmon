@@ -49,7 +49,7 @@ proc ::treqmon::middleware::valkeystore::init {config_dict} {
 
 }
 
-proc ::treqmon::middleware::valkeystore::get_history_events {{worker_thread_id ""}} {
+proc ::treqmon::middleware::valkeystore::get_history_events {} {
     variable valkey_client
     return [$valkey_client LRANGE history_events 0 -1]
 }
