@@ -8,6 +8,48 @@
     </head>
     <body>
         <Stats />
-        <bundle_js url_prefix="$bundle_js_url_prefix" />
+        <bundle_js url_prefix="$bundle_js_url_prefix">
+            <!--
+            import css from "rollup-plugin-import-css";
+            import { nodeResolve } from '@rollup/plugin-node-resolve';
+            import injectProcessEnv from 'rollup-plugin-inject-process-env';
+            import commonjs from '@rollup/plugin-commonjs';
+            import { babel } from '@rollup/plugin-babel';
+
+            export default {
+                input: '${entryfile}',
+                output: {
+                    dir: '${rollup_outdir}',
+                    format: 'umd',
+                    name: '${name}',
+                    globals: {
+                    },
+                },
+                plugins: [
+                    css({
+                        output: '${bundle_css_filename}',
+                        alwaysOutput: true,
+                        minify: true,
+                    }),
+                    nodeResolve({
+                        modulePaths: ['node_modules'],
+                        extensions: ['.js', '.jsx', '.ts', '.tsx'],
+                    }),
+                    commonjs({include: /node_modules/}),
+                    injectProcessEnv({
+                        NODE_ENV: 'production',
+                    }),
+                    babel({
+                        babelHelpers: 'bundled',
+                        exclude: 'node_modules/**',
+                        presets: [],
+                        extensions: ['.js', '.jsx', '.ts', '.tsx'],
+                    }),
+                ],
+                external: [
+                ],
+            };
+            -->
+        </bundle_js>
     </body>
 </html>
