@@ -5,7 +5,7 @@
 package require twebserver
 package require treqmon
 
-set store "valkeystore"
+set store "tsvstore"
 if { $store eq {valkeystore} } {
     set treqmon_store "valkeystore"
     set treqmon_store_config {

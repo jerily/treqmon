@@ -22,14 +22,44 @@
     </p>
     <h3>Page View Statistics</h3>
     <p>
-        <PageViewsPerSecondChart page_view_stats="${page_view_stats}" />
+        <PageViewsPerSecondChart
+                element_id="page_views_per_second_chart_canvas"
+                page_view_stats="${page_view_stats}"
+        />
     </p>
     <p>
-        <PageViewsPerMinuteChart page_view_stats="${page_view_stats}" />
+        <PageViewsPerMinuteChart
+                element_id="page_views_per_minute_chart_canvas"
+                page_view_stats="${page_view_stats}"
+        />
     </p>
     <p>
-        <PageViewsPerHourChart page_view_stats="${page_view_stats}" />
+        <PageViewsPerHourChart
+                element_id="page_views_per_hour_chart_canvas"
+                page_view_stats="${page_view_stats}"
+        />
     </p>
+    <tpl if="$tsession_present">
+        <h3>Authenticated Users</h3>
+        <p>
+            <PageViewsPerSecondChart
+                    element_id="auth_page_views_per_second_chart_canvas"
+                    page_view_stats="${auth_page_view_stats}"
+            />
+        </p>
+        <p>
+            <PageViewsPerMinuteChart
+                    element_id="auth_page_views_per_minute_chart_canvas"
+                    page_view_stats="${auth_page_view_stats}"
+            />
+        </p>
+        <p>
+            <PageViewsPerHourChart
+                    element_id="auth_page_views_per_hour_chart_canvas"
+                    page_view_stats="${auth_page_view_stats}"
+            />
+        </p>
+    </tpl>
     <h3>Average Response Times</h3>
     <p>
         <ResponseTimesPerSecondChart response_time_stats="${response_time_stats}" />

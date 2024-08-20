@@ -62,7 +62,7 @@ proc ::treqmon::init_middleware {config} {
     middleware::init $config
 }
 
-proc ::treqmon::filter_events {events now_in_seconds {from_seconds ""} {to_seconds ""}} {
+proc ::treqmon::filter_events {events authenticated now_in_seconds {from_seconds ""} {to_seconds ""}} {
 
     if { $from_seconds ne {} && ![string is integer -strict $from_seconds] } {
         error "from_seconds must be an integer"
@@ -78,11 +78,14 @@ proc ::treqmon::filter_events {events now_in_seconds {from_seconds ""} {to_secon
 
     set result [list]
     foreach ev $events {
-        lassign $ev timestamp duration
+        lassign $ev timestamp duration authenticated_user
         if { $from_seconds ne {} && $timestamp < $from_seconds } {
             continue
         }
         if { $to_seconds ne {} && $timestamp > $to_seconds } {
+            continue
+        }
+        if { $authenticated ne {} && $authenticated ne $authenticated_user } {
             continue
         }
         lappend result $ev
@@ -121,13 +124,13 @@ proc ::treqmon::filter_events {events now_in_seconds {from_seconds ""} {to_secon
 #     #     { 500 5 }
 #     #     { 600 6 }
 #
-proc ::treqmon::get_history_events {{now_in_seconds ""} {from_seconds ""} {to_seconds ""} } {
+proc ::treqmon::get_history_events {{authenticated ""} {now_in_seconds ""} {from_seconds ""} {to_seconds ""} } {
     if { $now_in_seconds eq {} } {
         set now_in_seconds [clock seconds]
     }
 
     set history_events [::treqmon::middleware::get_history_events]
-    set result [filter_events $history_events $now_in_seconds $from_seconds $to_seconds]
+    set result [filter_events $history_events $authenticated $now_in_seconds $from_seconds $to_seconds]
 
     return $result
 }
@@ -153,7 +156,7 @@ proc ::treqmon::get_history_events {{now_in_seconds ""} {from_seconds ""} {to_se
 #     #     300 { { 300 3 } { 400 4 } }
 #     #     600 { { 500 5 } { 600 6 } }
 #
-proc ::treqmon::split_by_interval { events interval} {
+proc ::treqmon::split_by_interval {events interval} {
 
     if { $interval ni {second minute hour day} } {
         return -code error "unknown interval \"$interval\", should be second, minute, hour or day"
@@ -166,7 +169,7 @@ proc ::treqmon::split_by_interval { events interval} {
     array set result [list]
     foreach ev $events {
         # timestamp is in seconds
-        lassign $ev timestamp duration
+        lassign $ev timestamp duration authenticated_user
         set key [expr { $timestamp - ($timestamp % $interval_seconds) }]
         lappend result($key) $ev
     }
@@ -192,7 +195,7 @@ proc ::treqmon::max_k_page_views {top_k events} {
 # If the intervals are specified, the function returns the number of page views
 # for the specified intervals.
 #
-proc ::treqmon::get_page_views { events {now_in_seconds ""} {intervals "second minute hour"} {top_k "5"}} {
+proc ::treqmon::get_page_views { events {authenticated ""} {now_in_seconds ""} {intervals "second minute hour"} {top_k "5"}} {
     variable last_seconds_by_interval
     variable seconds_by_interval
 
@@ -207,10 +210,13 @@ proc ::treqmon::get_page_views { events {now_in_seconds ""} {intervals "second m
         set xmin [expr { $xmax - $last_seconds_by_interval($interval) }]
         set xrange [list $xmin $xmax]
 
-        set filtered_events [filter_events $events $now_in_seconds "-$last_seconds_by_interval($interval)"]
+        set filtered_events [filter_events $events $authenticated $now_in_seconds "-$last_seconds_by_interval($interval)"]
         set filtered_events_by_interval [::treqmon::split_by_interval $filtered_events $interval]
         set page_views_for_chart [dict map { k v } $filtered_events_by_interval {list $k [llength $v]}]
 
+        if { $authenticated ne {} && $authenticated } {
+            set events [filter_events $events $authenticated $now_in_seconds]
+        }
         set events_by_interval [::treqmon::split_by_interval $events $interval]
         set page_views_for_top_k [dict map { k v } $events_by_interval {list $k [llength $v]}]
 
@@ -283,7 +289,7 @@ proc ::treqmon::get_response_times {events {now_in_seconds ""} {intervals "secon
         set xmin [expr { $xmax - $last_seconds_by_interval($interval) }]
         set xrange [list $xmin $xmax]
 
-        set filtered_events [filter_events $events $now_in_seconds "-$last_seconds_by_interval($interval)"]
+        set filtered_events [filter_events $events "" $now_in_seconds "-$last_seconds_by_interval($interval)"]
         set filtered_events_by_interval [::treqmon::split_by_interval $filtered_events $interval]
         set response_times_for_chart [dict map { k v } $filtered_events_by_interval { list $k [avg_response_time $v] }]
 
@@ -305,10 +311,10 @@ proc ::treqmon::get_summary {events {now_in_seconds ""}} {
         set now_in_seconds [clock seconds]
     }
 
-    set last_minute_events [filter_events $events $now_in_seconds "-60"]
-    set last_half_hour_events [filter_events $events $now_in_seconds "-[expr { 30 * 60 }]"]
-    set last_hour_events [filter_events $events $now_in_seconds "-3600"]
-    set last_day_events [filter_events $events $now_in_seconds "-86400"]
+    set last_minute_events [filter_events $events "" $now_in_seconds "-60"]
+    set last_half_hour_events [filter_events $events "" $now_in_seconds "-[expr { 30 * 60 }]"]
+    set last_hour_events [filter_events $events "" $now_in_seconds "-3600"]
+    set last_day_events [filter_events $events "" $now_in_seconds "-86400"]
 
     set last_minute_avg_response_time [avg_response_time $last_minute_events]
     set last_half_hour_avg_response_time [avg_response_time $last_half_hour_events]

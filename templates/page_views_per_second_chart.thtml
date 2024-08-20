@@ -4,7 +4,7 @@
 
 <div class="pure-g">
     <div class="pure-u-3-5">
-        <canvas id="page_views_per_second_chart_canvas"></canvas>
+        <canvas id="$element_id"></canvas>
     </div>
     <div class="pure-u-2-5">
         <small>Max</small>
@@ -14,7 +14,7 @@
     </div>
 </div>
 
-<js args="chart_config $chart_config">
-    var ctx = document.getElementById('page_views_per_second_chart_canvas').getContext('2d');
+<js args="chart_config $chart_config id $element_id_json">
+    var ctx = document.getElementById(id).getContext('2d');
     var page_views_per_second_chart = new Chart(ctx, chart_config);
 </js>

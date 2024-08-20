@@ -1,6 +1,7 @@
 package require tjson
 
 set page_view_stats [dict get $__data__ page_view_stats]
+set element_id [dict get $__data__ element_id]
 
 set minute_stats_dict [dict get $page_view_stats minute]
 set minute_stats [dict get $minute_stats_dict page_views]
@@ -72,10 +73,12 @@ set options_typed {M {
     chart_config_node
 
 set chart_config_json [::tjson::to_json $chart_config_node]
+set element_id_json [::tjson::typed_to_json [list S $element_id]]
 
-# ::thtml::rendertemplate [dict merge $__data__ [list chart_config $chart_config_json]]
-return [dict merge $__data__ [list \
+return [list \
     chart_config $chart_config_json \
     minute_stats_dict $minute_stats_dict \
     top_k $top_k \
-    minute_top_k_views $minute_top_k_views]]
+    minute_top_k_views $minute_top_k_views \
+    element_id $element_id \
+    element_id_json $element_id_json]
