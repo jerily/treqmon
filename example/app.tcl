@@ -56,10 +56,10 @@ set init_script {
 
     ::twebserver::create_router -command_name process_conn router
 
-#    ::twebserver::add_middleware \
-#        -enter_proc ::treqmon::middleware::enter \
-#        -leave_proc ::treqmon::middleware::leave \
-#        $router
+    ::twebserver::add_middleware \
+        -enter_proc ::treqmon::middleware::enter \
+        -leave_proc ::treqmon::middleware::leave \
+        $router
 
     ::twebserver::add_route -prefix $router GET /(css|js|assets|bundle)/ get_assets_handler
     ::twebserver::add_route $router GET "/stats" get_stats_handler
@@ -114,10 +114,8 @@ set init_script {
     }
 
     proc get_catchall_handler {ctx req} {
-        set data [::treqmon::get_history_events]
         set html "Hello [dict get $req path]<br /><br /><a href=\"/stats\">Stats</a>"
         set res [::twebserver::build_response 200 "text/html; charset=utf-8" $html]
-        unset data
         return $res
     }
 
