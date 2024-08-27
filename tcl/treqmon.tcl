@@ -62,7 +62,7 @@ proc ::treqmon::init_middleware {config} {
     middleware::init $config
 }
 
-proc ::treqmon::filter_events {events authenticated now_in_seconds {from_seconds ""} {to_seconds ""}} {
+proc ::treqmon::filter_events {events active_session now_in_seconds {from_seconds ""} {to_seconds ""}} {
 
     if { $from_seconds ne {} && ![string is integer -strict $from_seconds] } {
         error "from_seconds must be an integer"
@@ -78,15 +78,20 @@ proc ::treqmon::filter_events {events authenticated now_in_seconds {from_seconds
 
     set result [list]
     foreach ev $events {
-        lassign $ev timestamp duration authenticated_user
+        lassign $ev timestamp duration session_id
         if { $from_seconds ne {} && $timestamp < $from_seconds } {
             continue
         }
         if { $to_seconds ne {} && $timestamp > $to_seconds } {
             continue
         }
-        if { $authenticated ne {} && $authenticated ne $authenticated_user } {
-            continue
+        if { $active_session ne {} } {
+            # active_session is a boolean
+            # if active_session is true, we want to keep only events with session_id
+            # if active_session is false, we want to keep only events without session_id
+            if { (!$active_session && $session_id ne {}) || ($active_session && $session_id eq {}) } {
+                continue
+            }
         }
         lappend result $ev
     }
@@ -124,13 +129,13 @@ proc ::treqmon::filter_events {events authenticated now_in_seconds {from_seconds
 #     #     { 500 5 }
 #     #     { 600 6 }
 #
-proc ::treqmon::get_history_events {{authenticated ""} {now_in_seconds ""} {from_seconds ""} {to_seconds ""} } {
+proc ::treqmon::get_history_events {{active_session ""} {now_in_seconds ""} {from_seconds ""} {to_seconds ""} } {
     if { $now_in_seconds eq {} } {
         set now_in_seconds [clock seconds]
     }
 
     set history_events [::treqmon::middleware::get_history_events]
-    set result [filter_events $history_events $authenticated $now_in_seconds $from_seconds $to_seconds]
+    set result [filter_events $history_events $active_session $now_in_seconds $from_seconds $to_seconds]
 
     return $result
 }
@@ -169,7 +174,7 @@ proc ::treqmon::split_by_interval {events interval} {
     array set result [list]
     foreach ev $events {
         # timestamp is in seconds
-        lassign $ev timestamp duration authenticated_user
+        lassign $ev timestamp duration session_id
         set key [expr { $timestamp - ($timestamp % $interval_seconds) }]
         lappend result($key) $ev
     }
@@ -195,7 +200,7 @@ proc ::treqmon::max_k_page_views {top_k events} {
 # If the intervals are specified, the function returns the number of page views
 # for the specified intervals.
 #
-proc ::treqmon::get_page_views { events {authenticated ""} {now_in_seconds ""} {intervals "second minute hour"} {top_k "5"}} {
+proc ::treqmon::get_page_views { events {now_in_seconds ""} {intervals "second minute hour"} {top_k "5"}} {
     variable last_seconds_by_interval
     variable seconds_by_interval
 
@@ -210,13 +215,10 @@ proc ::treqmon::get_page_views { events {authenticated ""} {now_in_seconds ""} {
         set xmin [expr { $xmax - $last_seconds_by_interval($interval) }]
         set xrange [list $xmin $xmax]
 
-        set filtered_events [filter_events $events $authenticated $now_in_seconds "-$last_seconds_by_interval($interval)"]
+        set filtered_events [filter_events $events "" $now_in_seconds "-$last_seconds_by_interval($interval)"]
         set filtered_events_by_interval [::treqmon::split_by_interval $filtered_events $interval]
         set page_views_for_chart [dict map { k v } $filtered_events_by_interval {list $k [llength $v]}]
 
-        if { $authenticated ne {} && $authenticated } {
-            set events [filter_events $events $authenticated $now_in_seconds]
-        }
         set events_by_interval [::treqmon::split_by_interval $events $interval]
         set page_views_for_top_k [dict map { k v } $events_by_interval {list $k [llength $v]}]
 
@@ -302,6 +304,58 @@ proc ::treqmon::get_response_times {events {now_in_seconds ""} {intervals "secon
             top_k $top_k \
             top_k_times [max_k_response_times $top_k $response_times_for_top_k]]
     }
+    return $result
+}
+
+proc ::treqmon::max_k_active_users {top_k events} {
+    set sorted_events [lsort -integer -stride 2 -index {1 1} -decreasing $events]
+    set values [lmap {k v} $sorted_events { set v }]
+    return [lrange $values 0 [expr { $top_k - 1}]]
+}
+
+proc ::treqmon::filter_with_session {v} {
+    set filtered_v [list]
+    foreach ev $v {
+        lassign $ev timestamp duration session_id
+        if { $session_id ne {} } {
+            lappend filtered_v $ev
+        }
+    }
+    return $filtered_v
+}
+
+proc ::treqmon::get_active_users { events {now_in_seconds ""} {intervals "second minute hour"} {top_k "5"}} {
+    variable last_seconds_by_interval
+    variable seconds_by_interval
+
+    if { $now_in_seconds eq {} } {
+        set now_in_seconds [clock seconds]
+    }
+
+    set result [list]
+    foreach interval $intervals {
+
+        set xmax [expr { $now_in_seconds - ($now_in_seconds % $seconds_by_interval($interval)) + $seconds_by_interval($interval) }]
+        set xmin [expr { $xmax - $last_seconds_by_interval($interval) }]
+        set xrange [list $xmin $xmax]
+
+        set active_session "1"
+        set filtered_events [filter_events $events $active_session $now_in_seconds "-$last_seconds_by_interval($interval)"]
+        set filtered_events_by_interval [::treqmon::split_by_interval $filtered_events $interval]
+        set active_users_for_chart [dict map { k v } $filtered_events_by_interval {list $k [llength [lsort -unique -index 2 [filter_with_session $v]]]}]
+
+
+        set events [filter_events $events $active_session $now_in_seconds]
+        set events_by_interval [::treqmon::split_by_interval $events $interval]
+        set active_users_for_top_k [dict map { k v } $events_by_interval {list $k [llength [lsort -unique -index 2 [filter_with_session $v]]]}]
+
+        lappend result $interval [list \
+            xrange $xrange \
+            active_users $active_users_for_chart \
+            top_k $top_k \
+            top_k_users [max_k_active_users $top_k $active_users_for_top_k]]
+    }
+
     return $result
 }
 

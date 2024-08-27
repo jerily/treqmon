@@ -6,11 +6,7 @@ set response_time_stats [::treqmon::get_response_times $events]
 
 set tsession_present_version ""
 catch { set tsession_present_version [package present tsession] }
-
 set tsession_present [expr { $tsession_present_version ne "" }]
-if { $tsession_present } {
-    set auth_page_view_stats [::treqmon::get_page_views $events 1]
-}
 
 set result [list \
    summary $summary \
@@ -19,7 +15,8 @@ set result [list \
    tsession_present $tsession_present]
 
 if { $tsession_present } {
-    lappend result auth_page_view_stats $auth_page_view_stats
+    set active_users_stats [::treqmon::get_active_users $events]
+    lappend result active_users_stats $active_users_stats
 }
 
 return $result

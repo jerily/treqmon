@@ -6,6 +6,9 @@
 <import name="ResponseTimesPerSecondChart" src="response_times_per_second_chart.thtml" />
 <import name="ResponseTimesPerMinuteChart" src="response_times_per_minute_chart.thtml" />
 <import name="ResponseTimesPerHourChart" src="response_times_per_hour_chart.thtml" />
+<import name="ActiveUsersPerSecondChart" src="active_users_per_second_chart.thtml" />
+<import name="ActiveUsersPerMinuteChart" src="active_users_per_minute_chart.thtml" />
+<import name="ActiveUsersPerHourChart" src="active_users_per_hour_chart.thtml" />
 
 <style>
     .stats-container {
@@ -40,23 +43,23 @@
         />
     </p>
     <tpl if="$tsession_present">
-        <h3>Authenticated Users</h3>
+        <h3>Active Users</h3>
         <p>
-            <PageViewsPerSecondChart
-                    element_id="auth_page_views_per_second_chart_canvas"
-                    page_view_stats="${auth_page_view_stats}"
+            <ActiveUsersPerSecondChart
+                    element_id="active_users_per_second_chart_canvas"
+                    active_users_stats="${active_users_stats}"
             />
         </p>
         <p>
-            <PageViewsPerMinuteChart
-                    element_id="auth_page_views_per_minute_chart_canvas"
-                    page_view_stats="${auth_page_view_stats}"
+            <ActiveUsersPerMinuteChart
+                    element_id="active_users_per_minute_chart_canvas"
+                    active_users_stats="${active_users_stats}"
             />
         </p>
         <p>
-            <PageViewsPerHourChart
-                    element_id="auth_page_views_per_hour_chart_canvas"
-                    page_view_stats="${auth_page_view_stats}"
+            <ActiveUsersPerHourChart
+                    element_id="active_users_per_hour_chart_canvas"
+                    active_users_stats="${active_users_stats}"
             />
         </p>
     </tpl>

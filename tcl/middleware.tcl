@@ -30,8 +30,14 @@ proc ::treqmon::middleware::enter { ctx req } {
 
 proc ::treqmon::middleware::leave { ctx req res } {
 
+    if { [dict exists $req session loggedin] } {
+        set session_id [dict get $req session id]
+    } else {
+        set session_id ""
+    }
+
     set event [dict create \
-        authenticated_user   [dict exists $req session loggedin] \
+        session_id           $session_id \
         remote_addr          [dict get $ctx addr] \
         remote_hostname      [dict get $ctx addr] \
         remote_logname       "-" \
@@ -68,14 +74,14 @@ proc ::treqmon::middleware::register_event {event} {
         ${logger}::log_event $event
     }
 
-    set authenticated_user [dict get $event authenticated_user]
+    set session_id [dict get $event session_id]
     set req_timestamp [dict get $event request_timestamp]
     set res_timestamp [dict get $event response_timestamp]
 
     set h [list \
         [expr { $req_timestamp / 1000000 }] \
         [expr { ( $res_timestamp - $req_timestamp ) / 1000 }] \
-        $authenticated_user \
+        $session_id \
     ]
 
     ${store}::register_datapoint $h
