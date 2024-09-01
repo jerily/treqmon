@@ -2,14 +2,13 @@
   "name": "treqmon-example",
   "version": "1.0.0",
   "scripts": {
-    "thtml-compile": "tclsh9.0 ../bin/thtml-compiledir.tcl tcl $PROJECT_HOME  $PROJECT_HOME/www"
+    "thtml-compile": "tclsh9.0 bin/thtml-compiledir.tcl tcl $PROJECT_HOME $PROJECT_HOME/www"
   },
   "dependencies": {
     "tjson": "^1.0.25",
-    "tsession": "^1.0.2",
-    "twebserver": "^1.47.52",
+    "tsession": "^1.0.3",
+    "twebserver": "^1.47.53",
     "thtml": "^1.5.0",
-    "tcl": "^9.0.0-beta.3",
     "tdom": "^0.9.4"
   },
   "devDependencies": {
