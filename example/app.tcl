@@ -32,17 +32,28 @@ set treqmon_config {
 dict set treqmon_store_config history_max_events 1000000
 dict set treqmon_config store $treqmon_store $treqmon_store_config
 
-#dict set treqmon_config logger console [list threshold 100]
+dict set treqmon_config logger console [list threshold 10]
 #dict set treqmon_config logger logfile [list \
 #    threshold 100 \
 #    path $treqmon_logfile_path]
 
 set treqmon_middleware_config [::treqmon::init_main $treqmon_config]
 
+set tsession_config {
+    hmac_keyset {{"primaryKeyId": 691856985, "key": [{"keyData": {"typeUrl": "type.googleapis.com/google.crypto.tink.HmacKey","keyMaterialType": "SYMMETRIC","value": "EgQIAxAgGiDZsmkTufMG/XlKlk9m7bqxustjUPT2YULEVm8mOp2mSA=="},"outputPrefixType": "TINK","keyId": 691856985,"status": "ENABLED"}]}}
+    save_uninitialized 0
+    cookie_insecure 1
+    store {
+        MemoryStore {}
+    }
+}
+
+
 set init_script {
     package require twebserver
     package require treqmon
     package require thtml
+    package require tsession
 
     ::thtml::init [dict create \
         debug 1 \
@@ -53,6 +64,7 @@ set init_script {
     set config_dict [::twebserver::get_config_dict]
 
     ::treqmon::init_middleware [dict get $config_dict treqmon]
+    ::tsession::init [dict get $config_dict tsession]
 
     ::twebserver::create_router -command_name process_conn router
 
@@ -61,12 +73,43 @@ set init_script {
         -leave_proc ::treqmon::middleware::leave \
         $router
 
+    ::twebserver::add_middleware \
+        -enter_proc ::tsession::enter \
+        -leave_proc ::tsession::leave \
+        $router
+
+    ::twebserver::add_route -strict $router GET / get_index_handler
+    ::twebserver::add_route -strict $router POST /login post_login_handler
+    ::twebserver::add_route -strict $router POST /logout post_logout_handler
     ::twebserver::add_route -prefix $router GET /(css|js|assets|bundle)/ get_assets_handler
     ::twebserver::add_route $router GET "/stats" get_stats_handler
     ::twebserver::add_route $router GET "*" get_catchall_handler
 
-    #interp alias {} process_conn {} $router
+    proc get_index_handler {ctx req} {
+        set loggedin [dict exists $req session loggedin]
 
+        set html [subst -nocommands -nobackslashes {
+            <html><body>
+                <p>Logged In: $loggedin</p>
+                <p><form method=post action=/login><button>Login</button></form></p>
+                <p><form method=post action=/logout><button>Logout</button></form></p>
+                <p><a href=/stats>Stats</a></p>
+            </body></html>
+        }]
+        return [::twebserver::build_response 200 text/html $html]
+    }
+
+    proc post_login_handler {ctx req} {
+        set res [::twebserver::build_redirect 302 /]
+        ::tsession::amend_session_with_changes res loggedin true
+        return $res
+    }
+
+    proc post_logout_handler {ctx req} {
+        set res [::twebserver::build_redirect 302 /]
+        ::tsession::mark_session_to_be_destroyed res
+        return $res
+    }
 
     proc path_join {args} {
         set rootdir [file normalize [::twebserver::get_rootdir]]
@@ -114,9 +157,7 @@ set init_script {
     }
 
     proc get_catchall_handler {ctx req} {
-        set html "Hello [dict get $req path]<br /><br /><a href=\"/stats\">Stats</a>"
-        set res [::twebserver::build_response 200 "text/html; charset=utf-8" $html]
-        return $res
+        return [::twebserver::build_response 404 "text/plain" "not found"]
     }
 
 }
@@ -127,7 +168,8 @@ set config_dict [dict create \
     gzip_types [list text/html text/plain application/json] \
     gzip_min_length 8192 \
     conn_timeout_millis 10000 \
-    treqmon $treqmon_middleware_config]
+    treqmon $treqmon_middleware_config \
+    tsession $tsession_config]
 
 set server_handle [::twebserver::create_server -with_router $config_dict process_conn $init_script]
 ::twebserver::listen_server -http -num_threads 4 $server_handle 8080
