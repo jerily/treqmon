@@ -9,3 +9,4 @@ cache
 bundle
 logs
 ttrek-venv
+ttrek-lock.json
