@@ -8,8 +8,7 @@
     "tjson": "^1.0.25",
     "tsession": "^1.0.3",
     "twebserver": "^1.47.53",
-    "thtml": "^1.5.0",
-    "tdom": "^0.9.4"
+    "thtml": "^1.5.0"
   },
   "devDependencies": {
 
