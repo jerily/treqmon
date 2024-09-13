@@ -62,6 +62,17 @@ proc ::treqmon::init_middleware {config} {
     middleware::init $config
 }
 
+# Filter Events
+#
+# filter_events accepts a list of events, a boolean active_session, a timestamp now_in_seconds,
+# and two optional arguments from_seconds and to_seconds.
+# The function returns a list of events that satisfy the following conditions:
+# - If from_seconds is specified, the function keeps only events with a timestamp greater than or equal to from_seconds.
+# - If to_seconds is specified, the function keeps only events with a timestamp less than or equal to to_seconds.
+# - If active_session is true, the function keeps only events with a session_id.
+# - If active_session is false, the function keeps only events without a session_id.
+# - If active_session is not specified, the function keeps all events.
+#
 proc ::treqmon::filter_events {events active_session now_in_seconds {from_seconds ""} {to_seconds ""}} {
 
     if { $from_seconds ne {} && ![string is integer -strict $from_seconds] } {
@@ -100,34 +111,9 @@ proc ::treqmon::filter_events {events active_session now_in_seconds {from_second
 }
 
 # Get the history of events
-# The function takes two optional arguments: from_seconds and to_seconds.
-# If the arguments are not specified, the function returns all events.
-# If the arguments are specified, the function returns events that fall
-# within the specified time interval.
 #
-# Example:
-#     set events {
-#         { 100 1 }
-#         { 200 2 }
-#         { 300 3 }
-#         { 400 4 }
-#         { 500 5 }
-#         { 600 6 }
-#     }
-#     set result [get_history_events 200 500]
-#     # The result will be:
-#     #     { 200 2 }
-#     #     { 300 3 }
-#     #     { 400 4 }
-#     #     { 500 5 }
-#     set result [get_history_events]
-#     # The result will be:
-#     #     { 100 1 }
-#     #     { 200 2 }
-#     #     { 300 3 }
-#     #     { 400 4 }
-#     #     { 500 5 }
-#     #     { 600 6 }
+# get_history_events invokes the middleware to get the history of events
+# and then filters the events based on the active_session, now_in_seconds, from_seconds and to_seconds.
 #
 proc ::treqmon::get_history_events {{active_session ""} {now_in_seconds ""} {from_seconds ""} {to_seconds ""} } {
     if { $now_in_seconds eq {} } {
@@ -141,25 +127,10 @@ proc ::treqmon::get_history_events {{active_session ""} {now_in_seconds ""} {fro
 }
 
 # Split events by interval
-# The function takes a list of events and an interval (second, minute, hour, day)
-# and returns a dictionary where the keys are the timestamps of the beginning of
-# the interval and the values are lists of events that fall into this interval.
-# The events are sorted by timestamp.
 #
-# Example:
-#     set events {
-#         { 100 1 }
-#         { 200 2 }
-#         { 300 3 }
-#         { 400 4 }
-#         { 500 5 }
-#         { 600 6 }
-#     }
-#     set result [split_by_interval $events minute]
-#     # The result will be:
-#     #     0 { { 100 1 } { 200 2 } }
-#     #     300 { { 300 3 } { 400 4 } }
-#     #     600 { { 500 5 } { 600 6 } }
+# split_by_interval accepts a list of events and an interval.
+# The function returns a dictionary where the keys are the timestamps of the events
+# rounded to the nearest interval and the values are lists of events that fall into the same interval.
 #
 proc ::treqmon::split_by_interval {events interval} {
 
@@ -194,7 +165,7 @@ proc ::treqmon::max_k_page_views {top_k events} {
 }
 
 # Get the number of page views for all given intervals
-# The function takes three arguments: events, now_in_seconds and intervals (optional)
+# The function takes four arguments: events, now_in_seconds, intervals (optional) and top_k (optional)
 # If the intervals are not specified, the function returns the number of page views
 # for all intervals (second, minute, hour).
 # If the intervals are specified, the function returns the number of page views
@@ -256,26 +227,13 @@ proc ::treqmon::max_k_response_times {top_k events} {
 }
 
 # Get the average response time for all given intervals
-# The function takes two arguments: events and intervals (optional)
+# The function takes four arguments: events, now_in_seconds, intervals (optional) and top_k (optional)
 # If the intervals are not specified, the function returns the average response time
 # for all intervals (second, minute, hour).
 # If the intervals are specified, the function returns the average response time
 # for the specified intervals.
-#
-# Example:
-#     set events {
-#         { 100 1 }
-#         { 200 2 }
-#         { 300 3 }
-#         { 400 4 }
-#         { 500 5 }
-#         { 600 6 }
-#     }
-#     set events [get_history_events 200 500]
-#     set result [get_response_times $events {second minute}]
-#     # The result will be:
-#     #     second { { 200 2 } { 300 3 } { 400 4 } { 500 5 } }
-#     #     minute { { 200 2 } { 400 5.5 } }
+# The function also returns the top_k response times for each interval.
+# The top_k response times are the k largest response times for each interval.
 #
 proc ::treqmon::get_response_times {events {now_in_seconds ""} {intervals "second minute hour"} {top_k "5"}} {
     variable last_seconds_by_interval
