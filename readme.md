@@ -112,7 +112,7 @@ and [purecss](https://purecss.io/) like this:
 
 ## Examples
 
-See full example [here](examples/app.tcl).
+See full example [here](example/app.tcl).
 
 ## Screenshots
 
