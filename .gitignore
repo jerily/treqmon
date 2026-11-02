@@ -10,3 +10,4 @@ bundle
 logs
 ttrek-venv
 ttrek-lock.json
+example/public/
