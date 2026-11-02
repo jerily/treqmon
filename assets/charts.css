@@ -1,0 +1,8 @@
+.stats-container { max-width: 1024px; margin: 0 auto; padding: 1rem; }
+.stats-chart { display: flex; gap: 1rem; margin: 2rem 0; }
+.stats-canvas { width: 60%; min-width: 0; }
+.stats-max { flex: 1; }
+@media (max-width: 640px) {
+    .stats-chart { flex-direction: column; }
+    .stats-canvas { width: 100%; }
+}

@@ -8,8 +8,10 @@ proc ::treqmon::valkeystore::init_main {output_configVar config} {
         port [dict get $config port] \
         history_max_events [dict get $config history_max_events]]
 
-    if {[dict exists $config password]} {
-        lappend outconf password [dict get $config password]
+    foreach key {ssl username password ssl_ca_file ssl_cert_file ssl_key_file timeout} {
+        if {[dict exists $config $key]} {
+            lappend outconf $key [dict get $config $key]
+        }
     }
 
     dict set output_config store "valkeystore" $outconf
@@ -30,15 +32,19 @@ proc ::treqmon::middleware::valkeystore::init {config_dict} {
     variable config
     variable history_max_events
 
-    package require valkey
+    package require valkey 1.0.1
 
     set config [dict merge $config $config_dict]
     set host [dict get $config host]
     set port [dict get $config port]
     set vk_args {}
-    if {[dict exists $config password]} {
-        set password [dict get $config password]
-        set vk_args [list -password $password]
+    if {[dict exists $config ssl] && [dict get $config ssl]} {
+        lappend vk_args -ssl
+    }
+    foreach key {username password ssl_ca_file ssl_cert_file ssl_key_file timeout} {
+        if {[dict exists $config $key]} {
+            lappend vk_args -$key [dict get $config $key]
+        }
     }
 
     if { [dict exists $config history_max_events] } {

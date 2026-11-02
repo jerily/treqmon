@@ -1,0 +1,9 @@
+<div class="stats-container">
+    {% include 'summary.html.jinja' %}
+    {% for group in groups %}
+        <h3>{{ group.title }}</h3>
+        {% for chart in group.charts %}
+            {% include 'chart.html.jinja' %}
+        {% endfor %}
+    {% endfor %}
+</div>

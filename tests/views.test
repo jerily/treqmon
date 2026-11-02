@@ -1,0 +1,34 @@
+package require tcltest 2
+namespace import ::tcltest::test
+package require treqmon 2.0.0
+::treqmon::view::init
+
+test views-1 {Empty data renders six charts with zero summary} -body {
+    set html [::treqmon::render_stats {}]
+    list [regexp -all {<canvas } $html] [string match {*Last minute: 0*} $html] \
+        [string match {*&quot;type&quot;:&quot;line&quot;*} $html]
+} -result {6 1 1}
+
+test views-2 {Session charts are explicit} -body {
+    regexp -all {<canvas } [::treqmon::render_stats {} true]
+} -result 9
+
+test views-3 {Real events render summary and maxima} -body {
+    set now [clock seconds]
+    set html [::treqmon::render_stats [list [list $now 12 user] [list $now 24 user]] true]
+    list [string match {*Last minute: 18*} $html] [string match {*Active Users*} $html] \
+        [string match {*: 2</small>*} $html]
+} -result {1 1 1}
+
+test views-4 {Chart attributes escape HTML and never evaluate Tcl} -body {
+    set ::executed 0
+    set attack {[set ::executed 1]<script>"&}
+    set fields [list M [list chart [list M [list title [list S $attack] \
+        config [list S $attack] top {L {}}]]]]
+    set html [::jinja2::render [dict get $::treqmon::view::templates chart.html.jinja] \
+        [::tjson::typed_to_json $fields]]
+    list $::executed [string match {*&lt;script&gt;&quot;&amp;*} $html] \
+        [string match {*<script>*} $html]
+} -result {0 1 0}
+
+::tcltest::cleanupTests

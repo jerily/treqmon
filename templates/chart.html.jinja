@@ -1,0 +1,11 @@
+<section class="stats-chart">
+    <div class="stats-canvas">
+        <canvas data-chart-config="{{ chart.config }}" aria-label="{{ chart.title }}" role="img"></canvas>
+    </div>
+    <div class="stats-max">
+        <small>Max</small>
+        {% for point in chart.top %}
+            <div><small>{{ point.time }}: {{ point.value }}</small></div>
+        {% endfor %}
+    </div>
+</section>
