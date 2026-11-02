@@ -20,9 +20,10 @@ install:
 	mkdir -vp "$(INSTALL_DIR)"
 	cp -vf LICENSE pkgIndex.tcl "$(INSTALL_DIR)"
 	mkdir -vp "$(INSTALL_DIR)"/tcl
-	mkdir -vp "$(INSTALL_DIR)"/templates
+	mkdir -vp "$(INSTALL_DIR)"/templates "$(INSTALL_DIR)"/assets
 	cp -vfr tcl/* "$(INSTALL_DIR)"/tcl
-	cp -vfr templates/* "$(INSTALL_DIR)"/templates
+	cp -vfr templates/*.html.jinja "$(INSTALL_DIR)"/templates
+	cp -vfr assets/* "$(INSTALL_DIR)"/assets
 
 .PHONY: test
 test:

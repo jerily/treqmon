@@ -1,119 +1,88 @@
 # treqmon
 
-Request Monitoring for [twebserver](https://github.com/jerily/twebserver).
+Request monitoring for twebserver.
 
-## Prerequisites
+## Principles
 
-- [twebserver](https://github.com/jerily/twebserver) (version 1.47.53 and above)
-- [valkey-tcl](https://github.com/jerily/valkey-tcl) (version 1.0.0 and above)
+- Store events in the configured Valkey, shared-variable or memory store.
+- Render trusted Jinja templates with typed JSON. Templates contain no Tcl code.
+- Keep credentials in application configuration.
 
-## Installation
+## Requirements
 
-```bash
-# It installs to /usr/local/lib
-# To install elsewhere, change the prefix
-# e.g. make install PREFIX=/path/to/install
-make install
+Tcl 8.6+, twebserver 1.47.53+, valkey-tcl 1.0.1+, jinja2-tcl 0.1.0+
+and tjson 1.0.26+. Thread is required for memory/shared-variable stores.
+
+```sh
+make install PREFIX=/path/to/install
 ```
 
-## Usage
+## Middleware
 
-We split configuration in two parts: main and middleware.
-The main part is needed for some stores and loggers
-to be initialized in the main thread.
-For example, if you are using the `memstore` store or the `console` logger,
-they create the worker thread in the main thread and then pass it to the
-middleware (twebserver) threads.
+In the main thread, initialize one store and pass the returned configuration
+to each worker:
 
-In main thread of your application:
 ```tcl
-package require treqmon
-set middleware_config [::treqmon::init_main $main_config]
+package require treqmon 2.0.0
+set config [dict create store [dict create valkeystore [dict create \
+    host $host port 6379 ssl true username appuser password $password \
+    history_max_events 100000]]]
+set worker_config [::treqmon::init_main $config]
 ```
 
-In middleware threads of your application:
+In each worker:
+
 ```tcl
-package require treqmon
-
-::treqmon::init_middleware $middleware_config
-
+::treqmon::init_middleware $worker_config
 ::twebserver::add_middleware \
     -enter_proc ::treqmon::middleware::enter \
-    -leave_proc ::treqmon::middleware::leave \
-    $router
+    -leave_proc ::treqmon::middleware::leave $router
 ```
 
-## Configuration
+Valkey also accepts `ssl_ca_file`, `ssl_cert_file`, `ssl_key_file`, and `timeout`
+(milliseconds). Build valkey-tcl and libvalkey with `-DENABLE_SSL=ON`.
+The optional `logger` dictionary selects `console` or `logfile`, with a
+`threshold` and, for files, a `path`.
 
-The following are supported configuration options:
+## Rendering
 
-- **store** - The store to use and its configuration. For example:
+Load and validate templates once in each worker with `::treqmon::view::init`.
+Render a statistics fragment with:
+
 ```tcl
-valkeystore {
-    host localhost
-    port 6379
-}
+set html [::treqmon::render_stats [::treqmon::get_history_events]]
 ```
 
-- **logger** - The logger to use and its configuration. For example:
-```tcl
-logger {
-    console {
-        threshold 100
-    }
-    logfile {
-        threshold 100
-        path /var/log/treqmon.log
-    }
-}
+Pass `true` as the second argument to include active-user charts when events
+contain session IDs. Page views, average response times and active users each
+have second/minute/hour charts and maxima.
+
+For a page wrapper, merge `::treqmon::view::templates` into your template
+dictionary and include `stats.html.jinja`. `::treqmon::view::context events
+?include_active_users?` returns typed fields for `::tjson::typed_to_json`.
+Serve Chart.js and the package's `assets/charts.js` and `assets/charts.css`
+locally. The asset directory is `::treqmon::view::asset_dir`.
+See [example/readme.md](example/readme.md) for a complete application.
+
+## Validation
+
+```sh
+make test TCLSH=/path/to/tclsh
 ```
 
-where **threshold** is the number of events that have to be exceeded before the logger logs the events in bulk.
+Tests cover statistics, rendering, escaping and TLS configuration forwarding.
 
-## Charts
+## Security
 
-The following are supported thtml components:
+### Surface
 
-* [page_views_per_hour_chart.thtml](templates/page_views_per_hour_chart.thtml)
-* [page_views_per_minute_chart.thtml](templates/page_views_per_minute_chart.thtml)
-* [page_views_per_second_chart.thtml](templates/page_views_per_second_chart.thtml)
-* [response_times_per_hour_chart.thtml](templates/response_times_per_hour_chart.thtml)
-* [response_times_per_minute_chart.thtml](templates/response_times_per_minute_chart.thtml)
-* [response_times_per_second_chart.thtml](templates/response_times_per_second_chart.thtml)
-* [active_users_per_hour_chart.thtml](templates/active_users_per_hour_chart.thtml)
-* [active_users_per_minute_chart.thtml](templates/active_users_per_minute_chart.thtml)
-* [active_users_per_second_chart.thtml](templates/active_users_per_second_chart.thtml)
-* [stats.thtml](templates/stats.thtml)
-* [summary.thtml](templates/summary.thtml)
+Valkey connections, request data and rendered statistics.
 
-You can import them in your application after you install
-[thtml](https://github.com/jerily/twebserver),
-[chart.js](https://www.chartjs.org/),
-and [purecss](https://purecss.io/) like this:
-```html
-<import name="Stats" src="@treqmon/stats.thtml" />
+### Protections
 
-<html lang="en">
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <bundle_css url_prefix="$bundle_css_url_prefix" />
-    </head>
-    <body>
-        <Stats />
-        <bundle_js url_prefix="$bundle_js_url_prefix">
-            <!--
-                ...
-            -->
-        </bundle_js>
-    </body>
-</html>
-```
+With `ssl true`, valkey-tcl verifies certificates and server identity on every
+connection. Jinja escapes HTML; chart JSON is escaped into data attributes.
 
-## Examples
+### Pending
 
-See full example [here](example/app.tcl).
-
-## Screenshots
-
-![Stats](stats.png)
+Configure TLS credentials and protect the statistics endpoint in deployment.

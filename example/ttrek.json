@@ -1,16 +1,14 @@
 {
   "name": "treqmon-example",
   "version": "1.0.0",
-  "scripts": {
-    "thtml-compile": "tclsh9.0 bin/thtml-compiledir.tcl tcl $PROJECT_HOME $PROJECT_HOME/www"
-  },
+  "scripts": {},
   "dependencies": {
-    "tjson": "^1.0.25",
+    "tjson": "^1.0.26",
     "tsession": "^1.0.3",
     "twebserver": "^1.47.53",
-    "thtml": "^1.5.0"
+    "jinja2-tcl": "^0.1.0",
+    "treqmon": "^2.0.0",
+    "valkey-tcl": "^1.0.1"
   },
-  "devDependencies": {
-
-  }
+  "devDependencies": {}
 }
