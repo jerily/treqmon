@@ -1,0 +1,83 @@
+package require tcltest 2
+namespace import ::tcltest::test
+package require treqmon 2.1.0
+
+::treqmon::init_middleware {store {tsvstore {history_max_events 100}}}
+set fixture_dir [file join [file dirname [info script]] fixtures]
+proc fixture {name} {
+    set channel [open [file join $::fixture_dir $name] r]
+    try {read $channel} finally {close $channel}
+}
+proc request {router path {method GET}} {
+    $router dispatch [dict create method $method path $path]
+}
+
+test http-1 {The tpathexp mount renders current memory-store data and handles HTTP methods} -setup {
+    set router [::tpathexp::router]
+    ::treqmon::mount $router
+} -body {
+    ::treqmon::middleware::tsvstore::register_datapoint [list [clock seconds] 12 {}]
+    set response [request $router /request-monitor]
+    list [dict get $response statusCode] [regexp -all {<canvas } [dict get $response body]] \
+        [string match {*Last minute: 12*} [dict get $response body]] \
+        [dict get $response headers cache-control] \
+        [dict get [request $router /request-monitor HEAD] body] \
+        [dict get [request $router /request-monitor POST] statusCode] \
+        [dict get [request $router /request-monitor/] statusCode] \
+        [dict get [request $router /request-monitor/missing] statusCode]
+} -cleanup {$router destroy} -result {200 6 1 no-store {} 405 200 404}
+
+test http-2 {Host masters and named templates are isolated between mounts} -setup {
+    set router [::tpathexp::router]
+    ::treqmon::mount $router -prefix /hosted -title {Monitor <&>} -include_active_users true \
+        -config [dict create master_template [fixture monitor-master.html.jinja] \
+            templates [dict create master.html.jinja [fixture master.html.jinja]]]
+    ::treqmon::mount $router -prefix /default
+} -body {
+    set hosted [dict get [request $router /hosted] body]
+    set plain [dict get [request $router /default] body]
+    list [string match {*Host navigation*} $hosted] [string match {*Monitor &lt;&amp;&gt;*} $hosted] \
+        [regexp -all {<canvas } $hosted] [string match {*Host navigation*} $plain] \
+        [regexp -all {<canvas } $plain] [string match {*src="/default/_assets/charts.js"*} $plain]
+} -cleanup {$router destroy} -result {1 1 9 0 6 1}
+
+test http-3 {Only named package assets are served and HEAD suppresses their bodies} -setup {
+    set router [::tpathexp::router]
+    ::treqmon::mount $router -prefix /
+} -body {
+    set js [request $router /_assets/charts.js]
+    set css [request $router /_assets/charts.css]
+    list [dict get $js statusCode] [dict get $js headers content-type] \
+        [dict get $css statusCode] [dict get $css headers x-content-type-options] \
+        [dict get [request $router /_assets/charts.js HEAD] body] \
+        [dict get [request $router /_assets/charts.js POST] statusCode] \
+        [dict get [request $router /_assets/%2e%2e] statusCode] \
+        [dict get [request $router /] statusCode]
+} -cleanup {$router destroy} -result {200 {application/javascript; charset=utf-8} 200 nosniff {} 405 404 200}
+
+test http-4 {Bad options and unresolved templates fail before routes are installed} -setup {
+    set router [::tpathexp::router]
+} -body {
+    set failures {}
+    foreach options [list {-prefix /:path} {-prefix //bad/path} {-include_active_users maybe} \
+        {-unknown true} {-config {unknown true}} {-config master_template} \
+        [list -config [dict create master_template [fixture monitor-master.html.jinja]]]] {
+        lappend failures [catch {::treqmon::mount $router {*}$options}]
+    }
+    list $failures [dict get [$router match GET /request-monitor] statusCode]
+} -cleanup {$router destroy} -result {{1 1 1 1 1 1 1} 404}
+
+test http-5 {A mount cannot silently hide behind an existing route} -setup {
+    set router [::tpathexp::router]
+    $router add GET /:path(.*) unused
+} -body {
+    ::treqmon::mount $router
+} -cleanup {$router destroy} -returnCodes error -match glob -result {*mount treqmon before catch-all routes*}
+
+test memory-1 {Initializing another worker preserves shared request history} -body {
+    set before [::treqmon::get_history_events]
+    ::treqmon::init_middleware {store {tsvstore {history_max_events 100}}}
+    expr {[llength $before] > 0 && [::treqmon::get_history_events] eq $before}
+} -result 1
+
+::tcltest::cleanupTests

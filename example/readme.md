@@ -2,7 +2,8 @@
 
 ## Principles
 
-Use the package's Jinja templates and serve browser assets locally.
+Mount the package on a `tpathexp` router with a trusted master template.
+The package owns the monitor page and chart assets; only Chart.js is copied locally.
 
 ## Run
 

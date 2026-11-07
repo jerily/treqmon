@@ -24,7 +24,12 @@ proc ::treqmon::middleware::tsvstore::init {config_dict} {
         set history_max_events [dict get $config history_max_events]
     }
 
-    tsv::set history_events events [list]
+    # Workers share this store. Initializing another worker must retain history.
+    tsv::lock history_events {
+        if {![tsv::exists history_events events]} {
+            tsv::set history_events events [list]
+        }
+    }
 }
 
 proc ::treqmon::middleware::tsvstore::get_history_events {} {

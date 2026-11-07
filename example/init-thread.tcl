@@ -1,37 +1,40 @@
 package require twebserver
-package require treqmon
+package require treqmon 2.1.0
 package require jinja2
 package require tsession
 
-::treqmon::view::init
 set channel [open [file join [::twebserver::get_rootdir] www app.html.jinja] r]
 try {set page_template [read $channel]} finally {close $channel}
-set templates [dict merge $::treqmon::view::templates [dict create app.html.jinja $page_template]]
-::jinja2::validate $page_template -templates $templates -path app.html.jinja
 
 set config_dict [::twebserver::get_config_dict]
 
 ::treqmon::init_middleware [dict get $config_dict treqmon]
 ::tsession::init [dict get $config_dict tsession]
 
-::twebserver::create_router -command_name process_conn router
+set router [::tpathexp::router]
+::treqmon::mount $router -prefix /stats -include_active_users true \
+    -config [dict create master_template $page_template]
+foreach {method path handler} {
+    GET / get_index_handler
+    POST /login post_login_handler
+    POST /logout post_logout_handler
+    GET /:type(css|js)/:path(.*) get_assets_handler
+    GET /:path(.*) get_catchall_handler
+} {
+    $router add $method $path [list invoke $handler] -strict true
+}
 
-::twebserver::add_middleware \
-    -enter_proc ::treqmon::middleware::enter \
-    -leave_proc ::treqmon::middleware::leave \
-    $router
+proc invoke {handler request context params} {$handler $context $request}
 
-::twebserver::add_middleware \
-    -enter_proc ::tsession::enter \
-    -leave_proc ::tsession::leave \
-    $router
-
-::twebserver::add_route -strict $router GET / get_index_handler
-::twebserver::add_route -strict $router POST /login post_login_handler
-::twebserver::add_route -strict $router POST /logout post_logout_handler
-::twebserver::add_route -prefix $router GET /(css|js)/ get_assets_handler
-::twebserver::add_route $router GET "/stats" get_stats_handler
-::twebserver::add_route $router GET "*" get_catchall_handler
+proc process_conn {context request} {
+    dict set request method [dict get $request httpMethod]
+    set request [::treqmon::middleware::enter $context $request]
+    set request [::tsession::enter $context $request]
+    set response [$::router dispatch $request $context]
+    set response [::tsession::leave $context $request $response]
+    set response [::treqmon::middleware::leave $context $request $response]
+    ::twebserver::return_response [dict get $context conn] $response
+}
 
 proc get_index_handler {ctx req} {
     set loggedin [dict exists $req session loggedin]
@@ -94,14 +97,6 @@ proc get_assets_handler {ctx req} {
         error "get_assets_handler: unsupported extension \"$ext\""
     }
     set res [::twebserver::build_response -return_file 200 $mimetype $filepath]
-    return $res
-}
-
-proc get_stats_handler {ctx req} {
-    set fields [::treqmon::view::context [::treqmon::get_history_events] true]
-    set html [::jinja2::render $::page_template [::tjson::typed_to_json [list M $fields]] \
-        -templates $::templates -path app.html.jinja]
-    set res [::twebserver::build_response 200 "text/html; charset=utf-8" $html]
     return $res
 }
 

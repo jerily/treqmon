@@ -1,6 +1,6 @@
 package require tcltest 2
 namespace import ::tcltest::test
-package require treqmon 2.0.0
+package require treqmon 2.1.0
 
 set events {{100 10 a} {100 30 b} {120 50 a} {180 70 {}}}
 test stats-1 {Summary averages use the requested window} -body {

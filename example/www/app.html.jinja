@@ -4,9 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Request statistics</title>
-    <link rel="stylesheet" href="/css/charts.css">
-    <script src="/js/chart.umd.js" defer></script>
-    <script src="/js/charts.js" defer></script>
+    <link rel="stylesheet" href="{{ assets }}/charts.css">
+    <script src="{{ chart_script }}" defer></script>
+    <script src="{{ assets }}/charts.js" defer></script>
 </head>
-<body>{% include 'stats.html.jinja' %}</body>
+<body><main class="monitor-page"><h1>{{ title }}</h1>{% block body %}{% endblock %}</main></body>
 </html>
