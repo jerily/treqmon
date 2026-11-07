@@ -1,6 +1,6 @@
 package require tcltest 2
 namespace import ::tcltest::test
-package require treqmon 2.0.0
+package require treqmon 2.1.0
 ::treqmon::view::init
 
 test views-1 {Empty data renders six charts with zero summary} -body {
@@ -30,5 +30,18 @@ test views-4 {Chart attributes escape HTML and never evaluate Tcl} -body {
     list $::executed [string match {*&lt;script&gt;&quot;&amp;*} $html] \
         [string match {*<script>*} $html]
 } -result {0 1 0}
+
+test views-5 {Charts fill missing buckets with zero for every interval} -body {
+    set result {}
+    foreach {interval step} {second 1 minute 60 hour 3600} {
+        set stats [dict create $interval [dict create xrange [list 0 [expr {2 * $step}]] \
+            page_views [dict create $step [list $step 7]] top_k_views [list [list $step 7]]]]
+        set chart [::treqmon::view::chart $stats $interval page_views {Page Views} Views top_k_views]
+        set chart [::tjson::json_to_simple [::tjson::typed_to_json $chart]]
+        set config [::tjson::json_to_simple [dict get $chart config]]
+        lappend result [dict get [lindex [dict get $config data datasets] 0] data]
+    }
+    set result
+} -result {{0 7 0} {0 7 0} {0 7 0}}
 
 ::tcltest::cleanupTests

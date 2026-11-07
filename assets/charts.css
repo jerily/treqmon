@@ -6,3 +6,4 @@
     .stats-chart { flex-direction: column; }
     .stats-canvas { width: 100%; }
 }
+.monitor-page { max-width: 1024px; margin: 0 auto; padding: 1rem; font-family: system-ui, sans-serif; }
