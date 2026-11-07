@@ -27,8 +27,9 @@ proc ::treqmon::console::init_main {output_configVar config} {
 
 proc ::treqmon::console::shutdown_main {} {
     variable worker_thread_id
-    thread::join $worker_thread_id
+    thread::send $worker_thread_id [list ::treqmon::worker::console::shutdown]
     thread::release $worker_thread_id
+    thread::join $worker_thread_id
 }
 
 namespace eval ::treqmon::middleware::console {

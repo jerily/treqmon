@@ -65,7 +65,7 @@ set config_dict [dict create \
     treqmon $treqmon_middleware_config \
     tsession $tsession_config]
 
-set server_handle [::twebserver::create_server -with_router $config_dict process_conn $init_script]
+set server_handle [::twebserver::create_server $config_dict process_conn $init_script]
 ::twebserver::listen_server -http -num_threads 4 $server_handle 8080
 
 puts "Server is running, go to http://localhost:8080/"
