@@ -28,8 +28,8 @@ proc ::treqmon::logfile::init_main {output_configVar config} {
 proc ::treqmon::logfile::shutdown_main {} {
     variable worker_thread_id
     thread::send $worker_thread_id [list ::treqmon::worker::logfile::shutdown]
-    thread::join $worker_thread_id
     thread::release $worker_thread_id
+    thread::join $worker_thread_id
 }
 
 namespace eval ::treqmon::middleware::logfile {

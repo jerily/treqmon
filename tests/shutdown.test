@@ -1,0 +1,23 @@
+package require tcltest 2
+namespace import ::tcltest::test
+::tcltest::testConstraint timeout [expr {[auto_execok timeout] ne {}}]
+set worker [file join [file dirname [info script]] fixtures shutdown.tcl]
+
+# A subprocess deadline makes a blocking thread::join a test failure, not a hung suite.
+test shutdown-1 {Console shutdown flushes buffered events and terminates} -constraints timeout -body {
+    exec timeout 10s [info nameofexecutable] $worker console
+} -result "example\nstopped"
+
+test shutdown-2 {Logfile shutdown flushes and closes the worker} -constraints timeout -setup {
+    set logfile [::tcltest::makeFile {} worker.log]
+} -body {
+    set result [exec timeout 10s [info nameofexecutable] $worker logfile $logfile]
+    set channel [open $logfile r]
+    try {list $result [string trim [read $channel]]} finally {close $channel}
+} -cleanup {::tcltest::removeFile worker.log} -result {stopped example}
+
+test shutdown-3 {Memory worker shuts down after storing events} -constraints timeout -body {
+    exec timeout 10s [info nameofexecutable] $worker memstore
+} -result stopped
+
+::tcltest::cleanupTests

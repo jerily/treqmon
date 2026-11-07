@@ -110,6 +110,8 @@ make test TCLSH=/path/to/tclsh
 
 Tests cover statistics, rendering, escaping, router methods, host-layout isolation,
 asset allowlisting, shared-memory initialization and TLS configuration forwarding.
+Worker-shutdown regressions use isolated child processes when `timeout` is available;
+these also verify that console and file loggers flush buffered events before exiting.
 
 ## Security
 
