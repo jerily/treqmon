@@ -1,0 +1,64 @@
+package require tcltest 2
+namespace import ::tcltest::test
+package require treqmon
+
+namespace eval ::treqmon::middleware::teststore {
+    variable history {}
+    proc init {config} {variable history; set history {}}
+    proc register_datapoint {point} {variable history; lappend history $point}
+    proc get_history_events {} {variable history; return $history}
+}
+namespace eval ::treqmon::middleware::testlogger {
+    variable events {}
+    proc init {config} {variable events; set events {}}
+    proc log_event {event} {variable events; lappend events $event}
+}
+::treqmon::init_middleware {store {teststore {}} logger {testlogger {}}}
+proc ok {request context params} {dict create statusCode 200 headers {} body ok}
+proc blocked {context request} {
+    return -code error -options {statusCode 429 headers {Retry-After 60} body blocked}
+}
+
+test middleware-responses {Mounted hooks record normal, missing, wrong-method and rejected requests} -setup {
+    set router [::tpathexp::router]
+    ::treqmon::mount $router
+    $router add GET /ok ok
+    $router add GET /blocked ok -enter_proc blocked
+    set ::treqmon::middleware::testlogger::events {}
+} -body {
+    foreach {method path} {GET /ok HEAD /ok GET /missing POST /ok GET /blocked} {
+        $router dispatch [dict create method $method path $path]
+    }
+    list [lmap event $::treqmon::middleware::testlogger::events {dict get $event response_status_code}] \
+        [dict get [lindex $::treqmon::middleware::testlogger::events 1] request_method] \
+        [dict get [lindex $::treqmon::middleware::testlogger::events 0] remote_addr]
+} -cleanup {$router destroy} -result {{200 200 404 405 429} HEAD -}
+
+test middleware-multiple-mounts {Dashboard mounts and router renames do not duplicate collection} -setup {
+    set router [::tpathexp::router]
+    ::treqmon::mount $router -prefix /first
+    ::treqmon::mount $router -prefix /second
+    rename $router ::renamed_monitor_router
+    set router ::renamed_monitor_router
+    ::treqmon::mount $router -prefix /third
+    set ::treqmon::middleware::testlogger::events {}
+} -body {
+    $router dispatch {method GET path /first}
+    list [llength $::treqmon::middleware::testlogger::events] \
+        [dict exists $::treqmon::http::monitored_routers $router]
+} -cleanup {$router destroy} -result {1 1}
+
+test middleware-destroy {Destroyed routers release the middleware registration} -body {
+    dict size $::treqmon::http::monitored_routers
+} -result 0
+
+test middleware-disabled {A dashboard can be mounted without registering collection hooks} -setup {
+    set router [::tpathexp::router]
+    ::treqmon::mount $router -middleware false
+    set ::treqmon::middleware::testlogger::events {}
+} -body {
+    set response [$router dispatch {method GET path /request-monitor}]
+    list [dict get $response statusCode] [llength $::treqmon::middleware::testlogger::events]
+} -cleanup {$router destroy} -result {200 0}
+
+::tcltest::cleanupTests

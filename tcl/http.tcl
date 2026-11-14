@@ -1,6 +1,14 @@
-package require tpathexp 1.1.0
+package require tpathexp 1.2.0
 
-namespace eval ::treqmon::http {}
+namespace eval ::treqmon::http {
+    variable monitored_routers {}
+}
+
+proc ::treqmon::http::router_changed {old new operation} {
+    variable monitored_routers
+    dict unset monitored_routers $old
+    if {$operation eq "rename"} {dict set monitored_routers $new 1}
+}
 
 proc ::treqmon::http::options {defaults args} {
     if {[llength $args] % 2} {error "options must be name/value pairs"}
@@ -14,7 +22,7 @@ proc ::treqmon::http::options {defaults args} {
 # Mount configuration and templates belong to this router, not package globals.
 proc ::treqmon::mount {router args} {
     set config [http::options {-prefix /request-monitor -title {Request Monitor} \
-        -include_active_users false -config {}} {*}$args]
+        -include_active_users false -middleware true -config {}} {*}$args]
     set settings [http::options {master_template {} templates {} chart_script /js/chart.umd.js} \
         {*}[dict get $config -config]]
     set prefix [string trimright [dict get $config -prefix] /]
@@ -23,6 +31,9 @@ proc ::treqmon::mount {router args} {
     }
     if {![string is boolean -strict [dict get $config -include_active_users]]} {
         error "-include_active_users must be a boolean"
+    }
+    if {![string is boolean -strict [dict get $config -middleware]]} {
+        error "-middleware must be a boolean"
     }
     dict set config -prefix $prefix
     dict set config -config $settings
@@ -45,6 +56,16 @@ proc ::treqmon::mount {router args} {
     $router add GET $index [list ::treqmon::http::dispatch $config page] -strict true
     if {$prefix ne {}} {
         $router add GET $prefix/ [list ::treqmon::http::dispatch $config page] -strict true
+    }
+    # Multiple dashboard mounts share one collection layer. Track command
+    # renames/deletion so the registration follows the router's lifetime.
+    variable ::treqmon::http::monitored_routers
+    set command [namespace which -command $router]
+    if {[dict get $config -middleware] && ![dict exists $monitored_routers $command]} {
+        $router add_middleware -enter_proc ::treqmon::middleware::enter \
+            -leave_proc ::treqmon::middleware::leave
+        dict set monitored_routers $command 1
+        trace add command $command {rename delete} ::treqmon::http::router_changed
     }
     return $config
 }
