@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2024 Neofytos Dimitriou (neo@jerily.cy)
 # SPDX-License-Identifier: MIT.
 
-package provide treqmon 2.1.0
+package provide treqmon 2.2.0
 
 set dir [file dirname [info script]]
 

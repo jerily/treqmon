@@ -24,11 +24,17 @@ proc ::treqmon::middleware::init {config_dict} {
 }
 
 proc ::treqmon::middleware::enter { ctx req } {
+    # Direct tpathexp dispatch only requires method and path. HTTP adapters can
+    # supply the richer fields used by access logs.
+    if {![dict exists $req httpMethod]} {dict set req httpMethod [dict get $req method]}
+    set req [dict merge [dict create url [dict get $req path] version HTTP/1.1 \
+        headers {} queryString {}] $req]
     dict set req treqmon timestamp [clock microseconds]
     return $req
 }
 
 proc ::treqmon::middleware::leave { ctx req res } {
+    set ctx [dict merge {addr - port -} $ctx]
 
     if { [dict exists $req session loggedin] } {
         set session_id [dict get $req session id]

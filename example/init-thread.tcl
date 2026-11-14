@@ -1,5 +1,5 @@
 package require twebserver
-package require treqmon 2.1.0
+package require treqmon 2.2.0
 package require jinja2
 package require tsession
 
@@ -14,6 +14,7 @@ set config_dict [::twebserver::get_config_dict]
 set router [::tpathexp::router]
 ::treqmon::mount $router -prefix /stats -include_active_users true \
     -config [dict create master_template $page_template]
+$router add_middleware -enter_proc ::tsession::enter -leave_proc ::tsession::leave
 foreach {method path handler} {
     GET / get_index_handler
     POST /login post_login_handler
@@ -28,11 +29,7 @@ proc invoke {handler request context params} {$handler $context $request}
 
 proc process_conn {context request} {
     dict set request method [dict get $request httpMethod]
-    set request [::treqmon::middleware::enter $context $request]
-    set request [::tsession::enter $context $request]
     set response [$::router dispatch $request $context]
-    set response [::tsession::leave $context $request $response]
-    set response [::treqmon::middleware::leave $context $request $response]
     ::twebserver::return_response [dict get $context conn] $response
 }
 
