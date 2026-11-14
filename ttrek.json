@@ -1,13 +1,16 @@
 {
   "name": "treqmon",
-  "version": "2.1.0",
-  "scripts": {},
+  "version": "2.2.0",
+  "scripts": {
+    "test": {"file": "bin/run.sh", "args": ["tests/all.tcl"]},
+    "example": {"file": "bin/run.sh", "args": ["example/app.tcl"]}
+  },
   "dependencies": {
     "valkey-tcl": ">=1.0.1",
     "twebserver": ">=1.47.53",
     "jinja2-tcl": "^0.1.0",
     "tjson": ">=1.0.26",
-    "tpathexp": "^1.1.0",
+    "tpathexp": "^1.2.0",
     "thread": ">=2.8.9"
   },
   "devDependencies": {}

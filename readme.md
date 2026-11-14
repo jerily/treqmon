@@ -14,7 +14,7 @@ Request monitoring for twebserver.
 ## Requirements
 
 Tcl 8.6+, twebserver 1.47.53+, valkey-tcl 1.0.1+, jinja2-tcl 0.1.0+
-and tjson 1.0.26+, plus tpathexp 1.1.0+. Thread is required for memory/shared-variable stores.
+and tjson 1.0.26+, plus tpathexp 1.2.0+. Thread is required for memory/shared-variable stores.
 
 ```sh
 make install PREFIX=/path/to/install
@@ -26,7 +26,7 @@ In the main thread, initialize one store and pass the returned configuration
 to each worker:
 
 ```tcl
-package require treqmon 2.1.0
+package require treqmon 2.2.0
 set config [dict create store [dict create valkeystore [dict create \
     host $host port 6379 ssl true username appuser password $password \
     history_max_events 100000]]]
@@ -37,9 +37,8 @@ In each worker:
 
 ```tcl
 ::treqmon::init_middleware $worker_config
-::twebserver::add_middleware \
-    -enter_proc ::treqmon::middleware::enter \
-    -leave_proc ::treqmon::middleware::leave $router
+set router [::tpathexp::router]
+::treqmon::mount $router
 ```
 
 Valkey also accepts `ssl_ca_file`, `ssl_cert_file`, `ssl_key_file`, and `timeout`
@@ -51,7 +50,16 @@ For local, process-local memory shared by Tcl worker threads, initialize each
 worker with `::treqmon::init_middleware {store {tsvstore {history_max_events 10000}}}`.
 Starting another worker preserves existing history. Independent processes need
 Valkey to share history. Storage is separate from the page mount, so the same
-middleware works with direct HTTP servers and Lambda adapters.
+middleware works with direct HTTP servers and Lambda adapters. `mount` registers
+collection middleware once per router, even with multiple dashboard mounts.
+Mount treqmon before rate limiting or other hooks that can return HTTP errors
+so those responses are recorded. Enter hooks run in registration order; leave
+hooks run in reverse order. `-middleware false` mounts only the dashboard without
+adding collection hooks.
+
+Direct dispatch accepts the router's minimal `method`/`path` request. Adapters
+can supply headers, query strings, protocol and trusted context `addr`/`port`
+for fuller logs. Missing peer information is logged as `-`.
 
 ## Mounted monitor
 
@@ -106,7 +114,13 @@ See [example/readme.md](example/readme.md) for a complete application.
 
 ```sh
 make test TCLSH=/path/to/tclsh
+ttrek run -script test
+ttrek run -script example
 ```
+
+The `ttrek.json` scripts use executable file references with preset arguments;
+set `TCLSH` to select your interpreter. The example also needs the dependencies
+and store configuration in `example/`.
 
 Tests cover statistics, rendering, escaping, router methods, host-layout isolation,
 asset allowlisting, shared-memory initialization and TLS configuration forwarding.
