@@ -72,6 +72,12 @@ proc ::treqmon::middleware::get_history_events {} {
     return [${store}::get_history_events]
 }
 
+proc ::treqmon::middleware::get_recent_requests {} {
+    variable store
+    if {[namespace which -command ${store}::get_recent_requests] eq {}} {return {}}
+    return [${store}::get_recent_requests]
+}
+
 proc ::treqmon::middleware::register_event {event} {
     variable store
     variable loggers
@@ -91,4 +97,18 @@ proc ::treqmon::middleware::register_event {event} {
     ]
 
     ${store}::register_datapoint $h
+
+    # Keep detailed requests separately from the much larger chart history.
+    # Store only the requested metadata, never cookies, query strings or bodies.
+    if {[namespace which -command ${store}::register_recent_request] ne {}} {
+        set agent {}
+        dict for {name value} [dict get $event request_headers] {
+            if {[string equal -nocase $name User-Agent]} {set agent [string range $value 0 1023]; break}
+        }
+        set request [dict create timestamp [expr {$req_timestamp / 1000000}] \
+            ip [string range [dict get $event remote_addr] 0 127] \
+            method [dict get $event request_method] path [string range [dict get $event request_path] 0 4095] \
+            user_agent $agent status [dict get $event response_status_code]]
+        ${store}::register_recent_request $request
+    }
 }

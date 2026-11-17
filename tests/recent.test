@@ -1,0 +1,46 @@
+package require tcltest 2
+package require treqmon 2.3.0
+namespace import ::tcltest::*
+
+namespace eval ::treqmon::middleware::recenttest {
+    proc init {config} {set ::treqmon::worker::memstore::recent_requests {}}
+    proc register_datapoint {point} {}
+    proc get_history_events {} {return {}}
+    proc register_recent_request {request} {::treqmon::worker::memstore::register_recent_request $request}
+    proc get_recent_requests {} {::treqmon::worker::memstore::get_recent_requests}
+}
+proc recent_ok {request context params} {dict create statusCode 200 body ok}
+proc recent_blocked {context request} {return -code error -options {statusCode 429 body blocked}}
+
+test recent-metadata {Metadata uses trusted peer IP, handles header casing, and excludes secrets} -setup {
+    ::treqmon::init_middleware {store {recenttest {}}}
+    set router [::tpathexp::router]
+    ::treqmon::mount $router
+    $router add GET /ok recent_ok
+    $router add GET /blocked recent_ok -enter_proc recent_blocked
+} -body {
+    $router dispatch {method GET path /ok queryString token=secret headers {uSeR-aGeNt {Browser/1.0} cookie private authorization secret x-forwarded-for 198.51.100.99}} {addr 203.0.113.4}
+    $router dispatch {method GET path /blocked} {addr 203.0.113.5}
+    lassign [::treqmon::get_recent_requests] blocked ok
+    list [dict get $ok ip] [dict get $ok path] [dict get $ok user_agent] \
+        [dict get $blocked status] [dict get $blocked user_agent] \
+        [lsort [dict keys $ok]] [expr {[string first secret $ok] < 0}]
+} -cleanup {$router destroy} -result {203.0.113.4 /ok Browser/1.0 429 {} {ip method path status timestamp user_agent} 1}
+
+test recent-memory-bound {The memory store retains exactly the newest 100 requests} -body {
+    set ::treqmon::worker::memstore::recent_requests {}
+    for {set i 0} {$i < 105} {incr i} {::treqmon::worker::memstore::register_recent_request [dict create path /$i]}
+    set entries [::treqmon::worker::memstore::get_recent_requests]
+    list [llength $entries] [dict get [lindex $entries 0] path] [dict get [lindex $entries end] path]
+} -result {100 /104 /5}
+
+test recent-tsv-bound {Worker initialization preserves the bounded shared request list} -body {
+    ::treqmon::middleware::tsvstore::init {}
+    tsv::set history_events recent_requests {}
+    for {set i 0} {$i < 105} {incr i} {::treqmon::middleware::tsvstore::register_recent_request [dict create path /$i]}
+    ::treqmon::middleware::tsvstore::init {}
+    set entries [::treqmon::middleware::tsvstore::get_recent_requests]
+    list [llength $entries] [dict get [lindex $entries 0] path] [dict get [lindex $entries end] path]
+} -result {100 /104 /5}
+
+cleanupTests

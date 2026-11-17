@@ -60,6 +60,21 @@ proc ::treqmon::middleware::valkeystore::get_history_events {} {
     return [$valkey_client LRANGE history_events 0 -1]
 }
 
+proc ::treqmon::middleware::valkeystore::get_recent_requests {} {
+    variable valkey_client
+    $valkey_client LRANGE treqmon:recent_requests 0 99
+}
+
+proc ::treqmon::middleware::valkeystore::register_recent_request {request} {
+    variable valkey_client
+    # Atomic trimming keeps the shared list bounded even with concurrent workers.
+    $valkey_client EVAL {
+        redis.call('LPUSH', KEYS[1], ARGV[1])
+        redis.call('LTRIM', KEYS[1], 0, 99)
+        return 1
+    } 1 treqmon:recent_requests $request
+}
+
 proc ::treqmon::middleware::valkeystore::register_datapoint {datapoint} {
     variable valkey_client
     variable history_max_events
