@@ -62,6 +62,11 @@ proc ::treqmon::init_middleware {config} {
     middleware::init $config
 }
 
+# Return up to 100 completed requests, most recently recorded first.
+proc ::treqmon::get_recent_requests {} {
+    middleware::get_recent_requests
+}
+
 # Filter Events
 #
 # filter_events accepts a list of events, a boolean active_session, a timestamp now_in_seconds,

@@ -143,3 +143,15 @@ named package files. Responses use nosniff and a same-origin content security po
 ### Pending
 
 Configure TLS credentials and protect the statistics endpoint in deployment.
+
+
+`::treqmon::get_recent_requests` returns up to 100 completed requests, newest
+recorded first. Each entry contains `timestamp` (epoch seconds), `ip`, `method`,
+`path`, `status`, and `user_agent` (empty when absent). The three built-in stores
+keep this bounded list separately from chart history; Valkey shares it across
+processes. IP, path and user-agent fields are capped at 128, 4096 and 1024
+characters. Query strings, request bodies, cookies and other headers are not
+retained in this list. Existing chart datapoints remain unchanged. Hosts must
+protect any page that displays this information. Custom stores can implement
+`register_recent_request` and `get_recent_requests`; otherwise this API returns
+an empty list.

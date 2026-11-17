@@ -29,11 +29,22 @@ proc ::treqmon::middleware::tsvstore::init {config_dict} {
         if {![tsv::exists history_events events]} {
             tsv::set history_events events [list]
         }
+        if {![tsv::exists history_events recent_requests]} {tsv::set history_events recent_requests {}}
     }
 }
 
 proc ::treqmon::middleware::tsvstore::get_history_events {} {
     return [tsv::get history_events events]
+}
+
+proc ::treqmon::middleware::tsvstore::get_recent_requests {} {
+    tsv::get history_events recent_requests
+}
+
+proc ::treqmon::middleware::tsvstore::register_recent_request {request} {
+    tsv::lock history_events {
+        tsv::set history_events recent_requests [lrange [linsert [tsv::get history_events recent_requests] 0 $request] 0 99]
+    }
 }
 
 proc ::treqmon::middleware::tsvstore::register_datapoint {datapoint} {

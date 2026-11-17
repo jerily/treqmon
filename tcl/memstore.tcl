@@ -52,6 +52,16 @@ proc ::treqmon::middleware::memstore::get_history_events {} {
     return [thread::send $worker_thread_id [list ::treqmon::worker::memstore::get_history_events]]
 }
 
+proc ::treqmon::middleware::memstore::get_recent_requests {} {
+    variable worker_thread_id
+    thread::send $worker_thread_id ::treqmon::worker::memstore::get_recent_requests
+}
+
+proc ::treqmon::middleware::memstore::register_recent_request {request} {
+    variable worker_thread_id
+    thread::send -async $worker_thread_id [list ::treqmon::worker::memstore::register_recent_request $request]
+}
+
 proc ::treqmon::middleware::memstore::register_datapoint {datapoint} {
     variable worker_thread_id
     return [thread::send -async $worker_thread_id [list ::treqmon::worker::memstore::register_datapoint $datapoint]]
@@ -62,6 +72,7 @@ proc ::treqmon::middleware::memstore::shutdown {} {}
 namespace eval ::treqmon::worker::memstore {
     variable config {}
     variable history_events {}
+    variable recent_requests {}
     variable history_max_events 1000000
 }
 
@@ -89,4 +100,14 @@ proc ::treqmon::worker::memstore::register_datapoint { datapoint } {
 proc ::treqmon::worker::memstore::get_history_events {} {
     variable history_events
     return $history_events
+}
+
+proc ::treqmon::worker::memstore::get_recent_requests {} {
+    variable recent_requests
+    return $recent_requests
+}
+
+proc ::treqmon::worker::memstore::register_recent_request {request} {
+    variable recent_requests
+    set recent_requests [lrange [linsert $recent_requests 0 $request] 0 99]
 }
