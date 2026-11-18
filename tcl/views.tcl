@@ -1,4 +1,3 @@
-package require jinja2 0.1.0
 package require tjson 1.0.26
 
 # Build typed JSON fields for the Jinja statistics templates.
@@ -73,6 +72,7 @@ namespace eval ::treqmon::view {
 }
 
 proc ::treqmon::view::init {{validate true}} {
+    package require jinja2 0.2.0
     variable templates
     variable template_dir
     set loaded {}
@@ -94,6 +94,7 @@ proc ::treqmon::view::init {{validate true}} {
 }
 
 proc ::treqmon::render_stats {events {include_active_users false}} {
+    package require jinja2 0.2.0
     if {![dict size $::treqmon::view::templates]} {::treqmon::view::init}
     set fields [::treqmon::view::context $events $include_active_users]
     return [::jinja2::render [dict get $::treqmon::view::templates stats.html.jinja] \
@@ -103,6 +104,7 @@ proc ::treqmon::render_stats {events {include_active_users false}} {
 
 # Validate default and host-composed templates without a monitoring backend.
 proc ::treqmon::view::prepare_templates {{settings {}}} {
+    package require jinja2 0.2.0
     variable templates
     set settings [dict merge {master_template {} templates {} validate_templates true} $settings]
     if {![string is boolean -strict [dict get $settings validate_templates]]} {error "validate_templates must be a boolean"}

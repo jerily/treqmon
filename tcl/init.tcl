@@ -1,8 +1,9 @@
+package require treqmon::routes 1.0
 # Copyright Jerily LTD. All Rights Reserved.
 # SPDX-FileCopyrightText: 2024 Neofytos Dimitriou (neo@jerily.cy)
 # SPDX-License-Identifier: MIT.
 
-package provide treqmon 2.3.1
+package provide treqmon 2.3.2
 
 set dir [file dirname [info script]]
 

@@ -20,14 +20,14 @@ proc ::treqmon::http::options {defaults args} {
 }
 
 # Mount configuration and templates belong to this router, not package globals.
-proc ::treqmon::mount {router args} {
+proc ::treqmon::prepare_mount {args} {
     set config [http::options {-prefix /request-monitor -title {Request Monitor} \
         -include_active_users false -middleware true -config {} -secret_config {}} {*}$args]
     # Backend credentials are configured separately; do not capture unused
     # mount secrets in routes or return them to the caller.
     dict size [dict get $config -secret_config]
     dict unset config -secret_config
-    set settings [http::options {master_template {} templates {} chart_script /js/chart.umd.js validate_templates true} \
+    set settings [http::options {master_template {} templates {} template_renderer {} chart_script /js/chart.umd.js validate_templates true} \
         {*}[dict get $config -config]]
     set prefix [string trimright [dict get $config -prefix] /]
     if {![regexp {^(/[a-zA-Z0-9_-]+)*$} $prefix]} {
@@ -41,17 +41,25 @@ proc ::treqmon::mount {router args} {
     }
     dict set config -prefix $prefix
     dict set config -config $settings
-    dict set config templates [::treqmon::view::prepare_templates $settings]
+    if {[dict get $settings template_renderer] eq {}} {
+        dict set config templates [::treqmon::view::prepare_templates $settings]
+    }
+    return $config
+}
+
+proc ::treqmon::mount {router args} {
+    set config [prepare_mount {*}$args]
+    set prefix [dict get $config -prefix]
+    set settings [dict get $config -config]
     set index [expr {$prefix eq {} ? "/" : $prefix}]
     foreach path [list $index $prefix/ $prefix/_assets/charts.css $prefix/_assets/charts.js] {
         if {[dict get [$router match GET $path] statusCode] != 404} {
             error "mount prefix is already handled; mount treqmon before catch-all routes"
         }
     }
-    $router add GET $prefix/_assets/:asset [list ::treqmon::http::dispatch $config asset] -strict true
-    $router add GET $index [list ::treqmon::http::dispatch $config page] -strict true
-    if {$prefix ne {}} {
-        $router add GET $prefix/ [list ::treqmon::http::dispatch $config page] -strict true
+    foreach route [::treqmon::route_specs $prefix $config $settings] {
+        lassign $route method path handler
+        $router add $method $path $handler -strict true
     }
     # Multiple dashboard mounts share one collection layer. Track command
     # renames/deletion so the registration follows the router's lifetime.
@@ -94,6 +102,10 @@ proc ::treqmon::http::dispatch {config action request context params} {
     dict set fields title [list S [dict get $config -title]]
     dict set fields assets [list S [dict get $config -prefix]/_assets]
     dict set fields chart_script [list S [dict get $config -config chart_script]]
+    set renderer [dict get $config -config template_renderer]
+    set json [::tjson::typed_to_json [list M $fields]]
+    if {$renderer ne {}} {return [response 200 [{*}$renderer monitor.html.jinja $json]]}
+    package require jinja2 0.2.0
     set templates [dict get $config templates]
     set html [::jinja2::render [dict get $templates monitor.html.jinja] \
         [::tjson::typed_to_json [list M $fields]] -templates $templates -path monitor.html.jinja]
