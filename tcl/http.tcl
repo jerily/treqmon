@@ -22,8 +22,12 @@ proc ::treqmon::http::options {defaults args} {
 # Mount configuration and templates belong to this router, not package globals.
 proc ::treqmon::mount {router args} {
     set config [http::options {-prefix /request-monitor -title {Request Monitor} \
-        -include_active_users false -middleware true -config {}} {*}$args]
-    set settings [http::options {master_template {} templates {} chart_script /js/chart.umd.js} \
+        -include_active_users false -middleware true -config {} -secret_config {}} {*}$args]
+    # Backend credentials are configured separately; do not capture unused
+    # mount secrets in routes or return them to the caller.
+    dict size [dict get $config -secret_config]
+    dict unset config -secret_config
+    set settings [http::options {master_template {} templates {} chart_script /js/chart.umd.js validate_templates true} \
         {*}[dict get $config -config]]
     set prefix [string trimright [dict get $config -prefix] /]
     if {![regexp {^(/[a-zA-Z0-9_-]+)*$} $prefix]} {
@@ -37,15 +41,7 @@ proc ::treqmon::mount {router args} {
     }
     dict set config -prefix $prefix
     dict set config -config $settings
-    ::treqmon::view::init
-    set templates [dict merge $::treqmon::view::templates [dict get $settings templates]]
-    if {[dict get $settings master_template] ne {}} {
-        dict set templates page.html.jinja [dict get $settings master_template]
-    }
-    dict for {name template} $templates {
-        ::jinja2::validate $template -templates $templates -path $name
-    }
-    dict set config templates $templates
+    dict set config templates [::treqmon::view::prepare_templates $settings]
     set index [expr {$prefix eq {} ? "/" : $prefix}]
     foreach path [list $index $prefix/ $prefix/_assets/charts.css $prefix/_assets/charts.js] {
         if {[dict get [$router match GET $path] statusCode] != 404} {

@@ -155,3 +155,22 @@ retained in this list. Existing chart datapoints remain unchanged. Hosts must
 protect any page that displays this information. Custom stores can implement
 `register_recent_request` and `get_recent_requests`; otherwise this API returns
 an empty list.
+
+## Build-time template validation
+
+`::treqmon::view::prepare_templates settings` returns the same template dictionary used
+by the mount, without opening a database, creating keys, connecting middleware,
+or registering routes. Supply the mount's `master_template` and `templates`
+settings to validate both the package defaults and their composition with the
+host layout during packaging/CI.
+
+Validation defaults to `true`. After validating the exact deployed templates,
+pass `validate_templates false` in the mount's `-config` to skip repeated
+validation in production workers. The template strings are still loaded and
+composed normally; rendering and escaping are unchanged. Development hosts can
+keep the default validation behavior. This option does not cache compiled templates.
+
+The mount also accepts `-secret_config dictionary`, consistent with `web-user`.
+It is reserved and currently unused here. Its dictionary shape is checked, then
+its contents are discarded rather than captured in routes or returned settings.
+Existing account-store or middleware credential handling is unchanged.

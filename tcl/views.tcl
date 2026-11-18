@@ -72,7 +72,7 @@ namespace eval ::treqmon::view {
     variable asset_dir [file normalize [file join [file dirname [info script]] .. assets]]
 }
 
-proc ::treqmon::view::init {} {
+proc ::treqmon::view::init {{validate true}} {
     variable templates
     variable template_dir
     set loaded {}
@@ -85,8 +85,10 @@ proc ::treqmon::view::init {} {
             close $channel
         }
     }
-    dict for {name template} $loaded {
-        ::jinja2::validate $template -templates $loaded -path $name
+    if {$validate} {
+        dict for {name template} $loaded {
+            ::jinja2::validate $template -templates $loaded -path $name
+        }
     }
     set templates $loaded
 }
@@ -97,4 +99,18 @@ proc ::treqmon::render_stats {events {include_active_users false}} {
     return [::jinja2::render [dict get $::treqmon::view::templates stats.html.jinja] \
         [::tjson::typed_to_json [list M $fields]] \
         -templates $::treqmon::view::templates -path stats.html.jinja]
+}
+
+# Validate default and host-composed templates without a monitoring backend.
+proc ::treqmon::view::prepare_templates {{settings {}}} {
+    variable templates
+    set settings [dict merge {master_template {} templates {} validate_templates true} $settings]
+    if {![string is boolean -strict [dict get $settings validate_templates]]} {error "validate_templates must be a boolean"}
+    init [dict get $settings validate_templates]
+    set available [dict merge $templates [dict get $settings templates]]
+    if {[dict get $settings master_template] ne {}} {dict set available page.html.jinja [dict get $settings master_template]}
+    if {[dict get $settings validate_templates]} {
+        dict for {name text} $available {::jinja2::validate $text -templates $available -path $name}
+    }
+    return $available
 }
